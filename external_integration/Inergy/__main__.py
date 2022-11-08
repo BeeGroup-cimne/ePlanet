@@ -1,0 +1,60 @@
+import argparse
+import os
+
+from dotenv import load_dotenv
+from neo4j import GraphDatabase
+
+from external_integration.Inergy.sources.InergySource import InergySource
+from external_integration.constants import DEBUG
+from external_integration.logger import logger
+from external_integration.utils import gather_data, fn_insert_elements, fn_insert_supplies, fn_insert_hourly_data
+from external_integration.utils.neo4j import get_buildings, get_sensors, get_sensors_measurements
+
+if __name__ == '__main__':
+    # https://apiv20.inergy.online/docs/api.html#218--insertar-elementos
+    # Load env. variables
+    load_dotenv()
+
+    # Set Arguments in CLI
+    ap = argparse.ArgumentParser(description='Insert data to Inergy')
+    ap.add_argument("--id_project", "-id_project", type=str, help="Project Id", required=True)
+    ap.add_argument("--type", "-t", type=str, help="The data that you want to insert",
+                    choices=['elements', 'supplies', 'hourly_data', 'all'],
+                    required=True)
+
+    ap.add_argument("--method", "-m", type=str, help="",
+                    choices=['update', 'insert'],
+                    default='insert')
+
+    ap.add_argument("--namespace", "-n", required=True)
+    args = ap.parse_args()
+
+    # Get credentials
+    if not DEBUG:
+        InergySource.authenticate()
+        logger.info("The authentication has been succeeded.")
+
+    # Neo4J
+    driver = GraphDatabase.driver(os.getenv('NEO4J_URI'),
+                                  auth=(os.getenv('NEO4J_USERNAME'), os.getenv('NEO4J_PASSWORD')))
+
+    logger.info("The connection with database has been succeeded.")
+
+    projects = args.id_project.split(',')
+
+    if args.type == 'elements' or args.type == 'all':
+        for i in projects:
+            gather_data(driver=driver, fn_data=get_buildings, fn_insert=fn_insert_elements, args=args,
+                        id_project=int(i))
+            logger.info(f"The process of integrate elements from {i} has been completed.")
+
+    if args.type == 'supplies' or args.type == 'all':
+        for i in projects:
+            gather_data(driver=driver, fn_data=get_sensors, fn_insert=fn_insert_supplies, args=args,
+                        id_project=int(i))
+            logger.info(f"The process of integrate supplies from {i} has been completed.")
+
+    if args.type == 'hourly_data' or args.type == 'all':
+        for i in projects:
+            gather_data(driver=driver, fn_data=get_sensors_measurements, fn_insert=fn_insert_hourly_data, args=args,
+                        id_project=int(i))

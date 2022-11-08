@@ -2,7 +2,7 @@ import unittest
 
 from dotenv import load_dotenv
 
-from external_integration.Inergy import InergySource
+from external_integration.Inergy.sources.InergySource import InergySource
 
 
 class SourceTesting(unittest.TestCase):
@@ -12,13 +12,12 @@ class SourceTesting(unittest.TestCase):
         load_dotenv()
 
     def test_1_get_credentials(self):
-        res = InergySource.InergySource.authenticate()
-        self.assertIsInstance(res, dict)
-        self.assertIsNotNone(res.get('access_token'))
-        self.__class__.token = res.get('access_token')
+        InergySource.authenticate()
+        self.assertIsNotNone(InergySource.token)
+        self.__class__.token = InergySource.token
 
     def test_2_generate_element(self):
-        InergySource.InergySource.insert_elements(self.token)
+        InergySource.insert_elements(self.token)
 
 
 if __name__ == '__main__':

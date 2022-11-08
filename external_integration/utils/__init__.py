@@ -4,12 +4,12 @@ import time
 import happybase
 import pandas as pd
 
-from external_integration.Inergy.InergySource import InergySource
 from external_integration.Inergy.domain.Element import Element
 from external_integration.Inergy.domain.HourlyData import HourlyData
 from external_integration.Inergy.domain.RequestHourlyData import RequestHourlyData
 from external_integration.Inergy.domain.SensorEnum import SensorEnum
 from external_integration.Inergy.domain.Supply import Supply, get_sensor_id
+from external_integration.Inergy.sources.InergySource import InergySource
 from external_integration.constants import DEBUG, INVERTED_SENSOR_TYPE_TAXONOMY, TZ_INFO
 from external_integration.logger import logger
 
@@ -20,6 +20,8 @@ def fn_insert_elements(args, id_project, data):
         el = Element.create(id_project, building)
         if el:
             to_insert.append(el.__dict__)
+
+    logger.info(f"DATA: {to_insert}")
 
     if not DEBUG:
         if args.method == 'insert':
@@ -34,7 +36,9 @@ def fn_insert_supplies(args, id_project, data):
         supply = Supply.create(id_project, sensor)
         if supply:
             to_insert.append(supply.__dict__)
-    print(to_insert)
+
+    logger.info(f"DATA: {to_insert}")
+
     if not DEBUG:
         if args.method == 'insert':
             InergySource.insert_supplies(data=to_insert)
@@ -55,15 +59,12 @@ def fn_insert_hourly_data(args, id_project, data):
                                           sensor=str(SensorEnum[sensor_type].value),
                                           hourly_data=[])
 
-        logger.info(f"RequestHourlyData {cups} created.")
         req_hour_data.hourly_data = get_data_hbase(_from, measure_id, sensor_type)
-        logger.info(
-            f"Energy Consumption from {cups} has been gathered successfully ({len(req_hour_data.hourly_data)}).")
+
+        logger.info(f"DATA: {req_hour_data.__dict__}")
 
         if not DEBUG:
             InergySource.update_hourly_data(data=[req_hour_data.__dict__])
-
-        print(req_hour_data.__dict__)
 
 
 def gather_data(driver, fn_data, fn_insert, args, id_project, limit=100, skip=0):
@@ -74,7 +75,8 @@ def gather_data(driver, fn_data, fn_insert, args, id_project, limit=100, skip=0)
         with driver.session() as session:
             data = fn_data(session, namespace=args.namespace, limit=limit, id_project=id_project,
                            skip=limit * skip).data()
-            fn_insert(args, id_project, data)
+            if data:
+                fn_insert(args, id_project, data)
 
         if len(data) == limit:
             skip += 1

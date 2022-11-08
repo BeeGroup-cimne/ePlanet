@@ -2,6 +2,8 @@ import os
 
 import requests
 
+from external_integration.logger import logger
+
 
 class InergySource:
     token = None
@@ -19,6 +21,7 @@ class InergySource:
         if res.ok:
             cls.raw_token = res.json()
             cls.token = res.json().get('access_token')
+            logger.info("[AUTHENTICATION]: OK")
         else:
             res.raise_for_status()
 

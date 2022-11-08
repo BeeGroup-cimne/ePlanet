@@ -29,32 +29,41 @@ if __name__ == '__main__':
     ap.add_argument("--namespace", "-n", required=True)
     args = ap.parse_args()
 
+    logger.info(f"DEBUG MODE: [{DEBUG}]")
+
     # Get credentials
     if not DEBUG:
         InergySource.authenticate()
-        logger.info("The authentication has been succeeded.")
 
     # Neo4J
-    driver = GraphDatabase.driver(os.getenv('NEO4J_URI'),
-                                  auth=(os.getenv('NEO4J_USERNAME'), os.getenv('NEO4J_PASSWORD')))
-
-    logger.info("The connection with database has been succeeded.")
+    try:
+        driver = GraphDatabase.driver(os.getenv('NEO4J_URI'),
+                                      auth=(os.getenv('NEO4J_USERNAME'), os.getenv('NEO4J_PASSWORD')))
+        logger.info("[NEO4J]: OK")
+    except Exception as ex:
+        logger.error(ex)
+        exit(-1)
 
     projects = args.id_project.split(',')
+    logger.info(f"Projects to be integrate: {projects}")
 
     if args.type == 'elements' or args.type == 'all':
         for i in projects:
+            logger.info(f"Integrate: {args.type.upper()} - {i}")
             gather_data(driver=driver, fn_data=get_buildings, fn_insert=fn_insert_elements, args=args,
                         id_project=int(i))
-            logger.info(f"The process of integrate elements from {i} has been completed.")
+            logger.info(f"The {args.type.upper()} from {i} has been integrated.")
 
     if args.type == 'supplies' or args.type == 'all':
         for i in projects:
+            logger.info(f"Integrate: {args.type.upper()} - {i}")
             gather_data(driver=driver, fn_data=get_sensors, fn_insert=fn_insert_supplies, args=args,
                         id_project=int(i))
-            logger.info(f"The process of integrate supplies from {i} has been completed.")
+            logger.info(f"The {args.type.upper()} from {i} has been integrated.")
 
     if args.type == 'hourly_data' or args.type == 'all':
         for i in projects:
+            logger.info(f"Integrate: {args.type.upper()} - {i}")
             gather_data(driver=driver, fn_data=get_sensors_measurements, fn_insert=fn_insert_hourly_data, args=args,
                         id_project=int(i))
+            logger.info(f"The {args.type.upper()} from {i} has been integrated.")

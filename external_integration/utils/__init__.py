@@ -106,17 +106,15 @@ def clean_ts_data(_from, data):
         if not df.empty and _from == 'GR':
             df['shifted'] = df['value'].shift(-1)
             df['isReal'] = df['shifted'] - df['value']
-            last_val = df.iloc[-1]['value']
-            df.iloc[-1, df.columns.get_loc('isReal')] = last_val
             df = df[df['isReal'] >= 0]
-            df = df[['value']].resample('D').interpolate()
-            df = df[['value']].resample('M').mean()
-            df['start'] = df.index.to_period('M').to_timestamp()
-            df.set_index('start', inplace=True)
-            df['value'] = df['value'].round(3)
+            df = df[['isReal']].resample('D').interpolate()
+            df = df[['isReal']].resample('M').mean()
+            df['isReal'] = df['isReal'].round(3)
+            df.rename(columns={'isReal': 'value'}, inplace=True)
 
         logger.info(f"Data had been cleaned successfully.")
-        return [HourlyData(value=row['value'], timestamp=index.replace(hour=12).isoformat()).__dict__ for index, row in
+        return [HourlyData(value=row['value'], timestamp=index.replace(hour=12, day=1).isoformat()).__dict__ for
+                index, row in
                 df.iterrows()]
     except Exception as ex:
         logger.error(ex)

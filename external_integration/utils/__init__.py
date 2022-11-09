@@ -54,6 +54,7 @@ def fn_insert_hourly_data(args, id_project, data):
         measure_id = i['m'].get('uri').split('#')[-1]
 
         logger.info(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
+        print(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
 
         req_hour_data = RequestHourlyData(instance=1, id_project=id_project, cups=cups,
                                           sensor=str(SensorEnum[sensor_type].value),
@@ -64,22 +65,26 @@ def fn_insert_hourly_data(args, id_project, data):
         logger.info(f"DATA: {req_hour_data.__dict__}")
 
         if not DEBUG:
-            InergySource.update_hourly_data(data=[req_hour_data.__dict__])
+            try:
+                InergySource.update_hourly_data(data=[req_hour_data.__dict__])
+            except Exception as ex:
+                logger.error(ex)
 
 
-def gather_data(driver, fn_data, fn_insert, args, id_project, limit=100, skip=0):
+def gather_data(driver, fn_data, fn_insert, args, id_project, limit=100, skip=1000):
     ttl = int(os.getenv('TTL'))
     t0 = time.time()
+    index = 0
 
-    while time.time() - t0 < ttl:
+    #while time.time() - t0 < ttl:
+    while True:
         with driver.session() as session:
             data = fn_data(session, namespace=args.namespace, limit=limit, id_project=id_project,
-                           skip=limit * skip).data()
-            if data:
-                fn_insert(args, id_project, data)
-
-        if len(data) == limit:
-            skip += 1
+                           skip=skip + (limit * index)).data()
+        if data:
+            fn_insert(args, id_project, data)
+            index += 1
+            print(f"Next : {index}")
         else:
             break
 
@@ -118,6 +123,7 @@ def clean_ts_data(_from, data):
                 df.iterrows()]
     except Exception as ex:
         logger.error(ex)
+        return []
 
 
 def get_data_hbase(_from, measure_id, sensor_type):
@@ -136,7 +142,8 @@ def get_data_hbase(_from, measure_id, sensor_type):
             value = decode_hbase_values(value=value)
             ts_data.append({'start': timestamp, 'end': value['info:end'], 'value': value['v:value']})
     logger.info(f"We found {len(ts_data)} records from {measure_id}")
-    return clean_ts_data(_from, ts_data)
+
+    return clean_ts_data(_from, ts_data) if ts_data else []
 
 
 def decode_hbase_values(value):

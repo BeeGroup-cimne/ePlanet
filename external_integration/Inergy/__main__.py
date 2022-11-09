@@ -32,9 +32,9 @@ if __name__ == '__main__':
     logger.info(f"DEBUG MODE: [{DEBUG}]")
 
     # Get credentials
-    if not DEBUG:
-        InergySource.authenticate()
-
+    # if not DEBUG:
+    #     InergySource.authenticate()
+    InergySource.token = os.getenv('TOKEN')
     # Neo4J
     try:
         driver = GraphDatabase.driver(os.getenv('NEO4J_URI'),

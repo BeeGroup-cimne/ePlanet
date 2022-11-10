@@ -22,18 +22,22 @@ if __name__ == '__main__':
                     choices=['elements', 'supplies', 'hourly_data', 'all'],
                     required=True)
 
-    ap.add_argument("--method", "-m", type=str, help="",
-                    choices=['update', 'insert'],
-                    default='insert')
+    ap.add_argument("--method", "-m", type=str, help="", choices=['update', 'insert'], default='insert')
 
     ap.add_argument("--namespace", "-n", required=True)
+
+    ap.add_argument("--skip", "-s", type=int, default=0)
+    ap.add_argument("--limit", "-l", type=int, default=100)
+
+    ap.add_argument("--token", '-token', default=True, type=bool, action=argparse.BooleanOptionalAction)
+
     args = ap.parse_args()
 
     logger.info(f"DEBUG MODE: [{DEBUG}]")
 
     # Get credentials
     if not DEBUG:
-        InergySource.authenticate()
+        InergySource.token = os.getenv('TOKEN') if args.token else InergySource.authenticate()
 
     # Neo4J
     try:

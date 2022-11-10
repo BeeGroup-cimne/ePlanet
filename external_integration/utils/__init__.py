@@ -54,6 +54,7 @@ def fn_insert_hourly_data(args, id_project, data):
         measure_id = i['m'].get('uri').split('#')[-1]
 
         logger.info(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
+        print(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
 
         req_hour_data = RequestHourlyData(instance=1, id_project=id_project, cups=cups,
                                           sensor=str(SensorEnum[sensor_type].value),
@@ -64,22 +65,24 @@ def fn_insert_hourly_data(args, id_project, data):
         logger.info(f"DATA: {req_hour_data.__dict__}")
 
         if not DEBUG:
-            InergySource.update_hourly_data(data=[req_hour_data.__dict__])
+            try:
+                InergySource.update_hourly_data(data=[req_hour_data.__dict__])
+            except Exception as ex:
+                logger.error(ex)
 
 
-def gather_data(driver, fn_data, fn_insert, args, id_project, limit=100, skip=0):
+def gather_data(driver, fn_data, fn_insert, args, id_project):
     ttl = int(os.getenv('TTL'))
     t0 = time.time()
+    index = 0
 
     while time.time() - t0 < ttl:
         with driver.session() as session:
-            data = fn_data(session, namespace=args.namespace, limit=limit, id_project=id_project,
-                           skip=limit * skip).data()
-            if data:
-                fn_insert(args, id_project, data)
-
-        if len(data) == limit:
-            skip += 1
+            data = fn_data(session, namespace=args.namespace, limit=args.limit, id_project=id_project,
+                           skip=args.skip + (args.limit * index)).data()
+        if data:
+            fn_insert(args, id_project, data)
+            index += 1
         else:
             break
 
@@ -106,20 +109,19 @@ def clean_ts_data(_from, data):
         if not df.empty and _from == 'GR':
             df['shifted'] = df['value'].shift(-1)
             df['isReal'] = df['shifted'] - df['value']
-            last_val = df.iloc[-1]['value']
-            df.iloc[-1, df.columns.get_loc('isReal')] = last_val
             df = df[df['isReal'] >= 0]
-            df = df[['value']].resample('D').interpolate()
-            df = df[['value']].resample('M').mean()
-            df['start'] = df.index.to_period('M').to_timestamp()
-            df.set_index('start', inplace=True)
-            df['value'] = df['value'].round(3)
+            df = df[['isReal']].resample('D').interpolate()
+            df = df[['isReal']].resample('M').mean()
+            df['isReal'] = df['isReal'].round(3)
+            df.rename(columns={'isReal': 'value'}, inplace=True)
 
         logger.info(f"Data had been cleaned successfully.")
-        return [HourlyData(value=row['value'], timestamp=index.replace(hour=12).isoformat()).__dict__ for index, row in
+        return [HourlyData(value=row['value'], timestamp=index.replace(hour=12, day=1).isoformat()).__dict__ for
+                index, row in
                 df.iterrows()]
     except Exception as ex:
         logger.error(ex)
+        return []
 
 
 def get_data_hbase(_from, measure_id, sensor_type):
@@ -138,7 +140,8 @@ def get_data_hbase(_from, measure_id, sensor_type):
             value = decode_hbase_values(value=value)
             ts_data.append({'start': timestamp, 'end': value['info:end'], 'value': value['v:value']})
     logger.info(f"We found {len(ts_data)} records from {measure_id}")
-    return clean_ts_data(_from, ts_data)
+
+    return clean_ts_data(_from, ts_data) if ts_data else []
 
 
 def decode_hbase_values(value):

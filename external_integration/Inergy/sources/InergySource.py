@@ -74,7 +74,7 @@ class InergySource:
         headers = {'Authorization': f'Bearer {cls.token}'}
 
         res = requests.post(url=f"{os.getenv('INERGY_BASE_URL')}/common/update_hourly_data", headers=headers, json=data,
-                            timeout=15)
+                            timeout=2)
         if res.ok:
             return res.json()
         else:

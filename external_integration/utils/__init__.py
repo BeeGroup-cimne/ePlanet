@@ -74,15 +74,24 @@ def fn_insert_hourly_data(args, id_project, data):
 def gather_data(driver, fn_data, fn_insert, args, id_project):
     ttl = int(os.getenv('TTL'))
     t0 = time.time()
+
     index = 0
+    count = 0  # number of items processed
 
     while time.time() - t0 < ttl:
         with driver.session() as session:
             data = fn_data(session, namespace=args.namespace, limit=args.limit, id_project=id_project,
                            skip=args.skip + (args.limit * index)).data()
+
         if data:
             fn_insert(args, id_project, data)
             index += 1
+
+            if args.stop > 0:
+                if args.stop < count:
+                    break
+                count += len(data)
+
         else:
             break
 

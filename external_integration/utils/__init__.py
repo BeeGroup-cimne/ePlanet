@@ -64,10 +64,10 @@ def fn_insert_hourly_data(args, id_project, data):
             req_hour_data.hourly_data = get_data_hbase(_from, measure_id, sensor_type, args)
 
             logger.info(f"DATA: {req_hour_data.__dict__}")
-
-            if not DEBUG:
+            if not DEBUG and req_hour_data.hourly_data:
                 try:
-                    InergySource.update_hourly_data(data=[req_hour_data.__dict__])
+                    res = InergySource.update_hourly_data(data=[req_hour_data.__dict__])
+                    logger.info(res)
                 except Exception as ex:
                     logger.error(ex)
 

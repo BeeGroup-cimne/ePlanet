@@ -49,7 +49,7 @@ class InergySource:
 
     @classmethod
     def update_elements(cls, data):
-        headers = {'Authorization': f'Bearer {cls.token}'}
+        headers = {'Authorization': f'Bearer {cls.token}', 'Content-Type': 'application/json'}
 
         res = requests.post(url=f"{os.getenv('INERGY_BASE_URL')}/common/update_element", headers=headers, json=data,
                             timeout=15)
@@ -60,7 +60,7 @@ class InergySource:
 
     @classmethod
     def update_supplies(cls, data):
-        headers = {'Authorization': f'Bearer {cls.token}'}
+        headers = {'Authorization': f'Bearer {cls.token}', 'Content-Type': 'application/json'}
 
         res = requests.post(url=f"{os.getenv('INERGY_BASE_URL')}/common/update_contract", headers=headers, json=data,
                             timeout=15)
@@ -71,10 +71,9 @@ class InergySource:
 
     @classmethod
     def update_hourly_data(cls, data):
-        headers = {'Authorization': f'Bearer {cls.token}'}
-
+        headers = {'Authorization': f'Bearer {cls.token}', 'Content-Type': 'application/json'}
         res = requests.post(url=f"{os.getenv('INERGY_BASE_URL')}/common/update_hourly_data", headers=headers, json=data,
-                            timeout=2)
+                            timeout=10)
         if res.ok:
             return res.json()
         else:

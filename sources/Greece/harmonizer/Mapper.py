@@ -1,8 +1,8 @@
 from utils.data_transformations import to_object_property
 
-from mapping_data.ontology.bigg_classes import Building, LocationInfo, BuildingSpace, Device, UtilityPointOfDelivery, \
+from ontology.bigg_classes import Building, LocationInfo, BuildingSpace, Device, UtilityPointOfDelivery, \
     Organization
-from mapping_data.ontology.namespaces_definition import countries, bigg_enums
+from ontology.namespaces_definition import countries, bigg_enums
 
 
 class Mapper(object):

@@ -1,6 +1,6 @@
-from mapping_data.sources import SourcePlugin
-from mapping_data.sources.Czech.gather import gather
-from mapping_data.sources.Czech.harmonizer.mapper_data import harmonize_building_info, harmonize_building_emm, \
+from sources import SourcePlugin
+from sources.Czech.gather import gather
+from sources.Czech.harmonizer.mapper_data import harmonize_building_info, harmonize_building_emm, \
     harmonize_simple_ts, harmonize_complex_ts
 
 

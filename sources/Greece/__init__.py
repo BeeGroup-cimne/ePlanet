@@ -1,8 +1,8 @@
 from utils.nomenclature import raw_nomenclature, RawMode
 
-from mapping_data.sources import SourcePlugin
-from mapping_data.sources.Greece.gather import gather
-from mapping_data.sources.Greece.harmonizer.mapping_data import harmonize_data
+from sources import SourcePlugin
+from sources.Greece.gather import gather
+from sources.Greece.harmonizer.mapping_data import harmonize_data
 
 
 class Plugin(SourcePlugin):

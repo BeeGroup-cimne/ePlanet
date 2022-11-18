@@ -1,7 +1,7 @@
 from mapping_data.sources import SourcePlugin
 from mapping_data.sources.Czech.gather import gather
 from mapping_data.sources.Czech.harmonizer.mapper_data import harmonize_building_info, harmonize_building_emm, \
-    harmonize_municipality_ts, harmonize_region_ts
+    harmonize_simple_ts, harmonize_complex_ts
 
 
 class Plugin(SourcePlugin):
@@ -17,11 +17,11 @@ class Plugin(SourcePlugin):
         if message["collection_type"] == 'EnergyEfficiencyMeasure':
             return harmonize_building_emm
 
-        if message["collection_type"] == 'municipality_ts':
-            return harmonize_municipality_ts
+        if message["collection_type"] == 'simple_ts':
+            return harmonize_simple_ts
 
-        if message["collection_type"] == 'region_ts':
-            return harmonize_region_ts
+        if message["collection_type"] == 'complex_ts':
+            return harmonize_complex_ts
 
     def get_kwargs(self, message):
         return {

@@ -1,7 +1,7 @@
-from mapping_data.ontology.bigg_classes import Building, BuildingOwnership, LocationInfo, BuildingSpace, Area, \
-    EnergyPerformanceCertificate, AreaType, AreaUnitOfMeasurement, Project, Element, Device, EnergyEfficiencyMeasure, \
-    EnergyPerformanceCertificateAdditionalInfo, EnergySaving, Organization
-from mapping_data.ontology.namespaces_definition import units, bigg_enums, countries
+from utils.rdf_utils.ontology.bigg_classes import Building, LocationInfo, BuildingSpace, Area, \
+    EnergyPerformanceCertificate, AreaType, AreaUnitOfMeasurement, BuildingOwnership, Device, \
+    Element, EnergyEfficiencyMeasure, EnergySaving, Project, EnergyPerformanceCertificateAdditionalInfo, Organization
+from utils.rdf_utils.ontology.namespaces_definition import countries, bigg_enums, units
 
 
 class Mapper(object):

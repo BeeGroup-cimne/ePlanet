@@ -178,7 +178,7 @@ def harmonize_building_emm(data, **kwargs):
         save_rdf_with_source(g, config['source'], config['neo4j'])
 
 
-def harmonize_municipality_ts(data, **kwargs):
+def harmonize_simple_ts(data, **kwargs):
     namespace = kwargs['namespace']
     n = Namespace(namespace)
     config = kwargs['config']
@@ -255,7 +255,7 @@ def harmonize_municipality_ts(data, **kwargs):
                           row_fields=['bucket', 'start', 'listKey'])
 
 
-def harmonize_region_ts(data, **kwargs):
+def harmonize_complex_ts(data, **kwargs):
     namespace = kwargs['namespace']
     n = Namespace(namespace)
     config = kwargs['config']
@@ -285,7 +285,7 @@ def harmonize_region_ts(data, **kwargs):
 
         for x in range(1, 13):
             date = datetime.datetime(year=row['Year'], month=x, day=1)
-            date_end = date + relativedelta(month=1) - datetime.timedelta(days=1)
+            date_end = (date + relativedelta(months=1)) - datetime.timedelta(days=1)
             value = row[x]
             aux.append(
                 {"date": date, "date_end": date_end, "value": value, "Unique ID": unique_id, 'DataType': data_type,
@@ -324,7 +324,6 @@ def harmonize_region_ts(data, **kwargs):
 
         device_table = harmonized_nomenclature(mode=HarmonizedMode.ONLINE, data_type=data_type, R=False,
                                                C=False, O=False, aggregation_function="SUM", freq=freq, user=user)
-
         save_to_hbase(sub_df.to_dict(orient="records"),
                       device_table,
                       hbase_conn,

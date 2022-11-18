@@ -282,3 +282,4 @@ cython_debug/
 
 .idea/*
 config.json
+mapping_data/data

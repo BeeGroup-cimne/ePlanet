@@ -6,7 +6,7 @@ from neo4j import GraphDatabase
 from rdflib import Namespace
 from utils.cache import Cache
 from utils.data_transformations import fuzz_location, device_subject, delivery_subject, location_info_subject, \
-    decode_hbase, sensor_subject
+    decode_hbase, sensor_subject, building_subject, building_space_subject
 from utils.hbase import save_to_hbase
 from utils.neo4j import create_sensor
 from utils.nomenclature import harmonized_nomenclature, HarmonizedMode

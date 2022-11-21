@@ -48,8 +48,9 @@ def clean_static_data(df: pd.DataFrame, **kwargs):
     df['hasLocationInfo'] = df['location_subject'].apply(lambda x: n[x])
 
     # Municipality
-    mun_map = fuzz_location(location_dict=Cache.municipality_dic_GR, list_prop=['ns1:name'],
-                            unique_values=df['Municipal unit'].unique())
+    mun_map = fuzz_location(location_dict=Cache.municipality_dic_GR,
+                            list_prop=['ns1:name', 'ns1:alternateName', 'ns1:shortName'],
+                            unique_values=df['Municipality'].unique())
 
     df['hasAddressCity'] = df['Municipality'].map(mun_map)
 

@@ -300,6 +300,8 @@ def harmonize_complex_ts(data, **kwargs):
 
         sub_df = pd.DataFrame(aux)
 
+        sub_df = sub_df[sub_df['value'] != 0].copy()
+
         sub_df['ts'] = sub_df['date']
         sub_df['timestamp'] = sub_df['ts'].view(int) // 10 ** 9
         sub_df["bucket"] = (sub_df['timestamp'].apply(float) // settings.ts_buckets) % settings.buckets

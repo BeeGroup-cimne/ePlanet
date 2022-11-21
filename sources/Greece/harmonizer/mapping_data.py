@@ -139,6 +139,11 @@ def harmonize_ts_data(raw_df: pd.DataFrame, kwargs):
 def clean_general_data(df: pd.DataFrame):
     df = df.applymap(decode_hbase)
 
+    # Only buildings
+    define_building = 'ΔΗΜΟΣ ' + df['Municipality'].unique()[0]
+
+    df = df[df['Name of the building or public lighting'] == define_building].copy()
+
     df['StartDate'] = df['Previous recording date'].astype(str).str.zfill(8)
     df['EndDate'] = df['Recording date'].astype(str).str.zfill(8)
 

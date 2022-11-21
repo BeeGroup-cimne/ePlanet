@@ -6,16 +6,16 @@ from neo4j import GraphDatabase
 from rdflib import Namespace
 from utils.cache import Cache
 from utils.data_transformations import fuzz_location, device_subject, delivery_subject, location_info_subject, \
-    decode_hbase, sensor_subject
+    decode_hbase, sensor_subject, building_subject, building_space_subject
 from utils.hbase import save_to_hbase
 from utils.neo4j import create_sensor
 from utils.nomenclature import harmonized_nomenclature, HarmonizedMode
 from utils.rdf.rdf_functions import generate_rdf
 from utils.rdf.save_rdf import save_rdf_with_source
 
-from mapping_data import settings
-from mapping_data.ontology.namespaces_definition import units, bigg_enums
-from mapping_data.sources.Greece.harmonizer.Mapper import Mapper
+import settings
+from ontology.namespaces_definition import units, bigg_enums
+from sources.Greece.harmonizer.Mapper import Mapper
 
 STATIC_COLUMNS = ['Year', 'Month', 'Region',
                   'Street name', 'Street number', 'Name of the building or public lighting', 'Unique ID']
@@ -28,6 +28,9 @@ def clean_static_data(df: pd.DataFrame, **kwargs):
     namespace = kwargs['namespace']
     config = kwargs['config']
     n = Namespace(namespace)
+
+    if 'Municipality unit' in list(df.columns):
+        df.rename(columns={'Municipality unit': 'Municipal unit'}, inplace=True)
 
     # Organization
     df['pertainsToOrganization'] = n[config['source']]
@@ -45,8 +48,8 @@ def clean_static_data(df: pd.DataFrame, **kwargs):
     df['hasLocationInfo'] = df['location_subject'].apply(lambda x: n[x])
 
     # Municipality
-    mun_map = fuzz_location(location_dict=Cache.municipality_dic_GR, list_prop=['ns1:alternateName'],
-                            unique_values=df['Municipality'].unique(), fix_score=80)
+    mun_map = fuzz_location(location_dict=Cache.municipality_dic_GR, list_prop=['ns1:name'],
+                            unique_values=df['Municipal unit'].unique())
 
     df['hasAddressCity'] = df['Municipality'].map(mun_map)
 
@@ -136,6 +139,11 @@ def harmonize_ts_data(raw_df: pd.DataFrame, kwargs):
 def clean_general_data(df: pd.DataFrame):
     df = df.applymap(decode_hbase)
 
+    # Only buildings
+    define_building = 'ΔΗΜΟΣ ' + df['Municipality'].unique()[0]
+
+    df = df[df['Name of the building or public lighting'] == define_building].copy()
+
     df['StartDate'] = df['Previous recording date'].astype(str).str.zfill(8)
     df['EndDate'] = df['Recording date'].astype(str).str.zfill(8)
 
@@ -171,6 +179,9 @@ def harmonize_static_data(df, config, kwargs, n):
     AUX_STATIC = []
     if 'Municipality unit' in df.columns:
         AUX_STATIC.append('Municipality unit')
+
+    if 'Municipal unit' in df.columns:
+        AUX_STATIC.append('Municipal unit')
 
     if 'Municipality' in df.columns:
         AUX_STATIC.append('Municipality')

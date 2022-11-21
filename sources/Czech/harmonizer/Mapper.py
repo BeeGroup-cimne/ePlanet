@@ -1,7 +1,7 @@
-from mapping_data.ontology.bigg_classes import Building, BuildingOwnership, LocationInfo, BuildingSpace, Area, \
-    EnergyPerformanceCertificate, AreaType, AreaUnitOfMeasurement, Project, Element, Device, EnergyEfficiencyMeasure, \
-    EnergyPerformanceCertificateAdditionalInfo, EnergySaving, Organization
-from mapping_data.ontology.namespaces_definition import units, bigg_enums, countries
+from ontology.bigg_classes import Building, LocationInfo, BuildingSpace, Area, \
+    EnergyPerformanceCertificate, AreaType, AreaUnitOfMeasurement, BuildingOwnership, Device, \
+    Element, EnergyEfficiencyMeasure, EnergySaving, Project, EnergyPerformanceCertificateAdditionalInfo, Organization
+from ontology.namespaces_definition import units, countries, bigg_enums
 
 
 class Mapper(object):

@@ -49,40 +49,49 @@ def fn_insert_supplies(args, id_project, data):
 def fn_insert_hourly_data(args, id_project, data):
     for i in data:
         _from, sensor_id, sensor_type = get_sensor_id(i['s'].get('uri'))
-        cups = f"{sensor_id}-{sensor_type}" if _from == 'CZ' else sensor_id
-        cups = cups[:20]
-        measure_id = i['m'].get('uri').split('#')[-1]
+        if sensor_type and _from and sensor_id:
+            cups = f"{sensor_id}-{sensor_type}" if _from == 'CZ' else sensor_id
+            cups = cups[:20]
+            measure_id = i['m'].get('uri').split('#')[-1]
 
-        logger.info(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
-        print(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
+            logger.info(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
+            print(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
 
-        req_hour_data = RequestHourlyData(instance=1, id_project=id_project, cups=cups,
-                                          sensor=str(SensorEnum[sensor_type].value),
-                                          hourly_data=[])
+            req_hour_data = RequestHourlyData(instance=1, id_project=id_project, cups=cups,
+                                              sensor=str(SensorEnum[sensor_type].value),
+                                              hourly_data=[])
 
-        req_hour_data.hourly_data = get_data_hbase(_from, measure_id, sensor_type)
+            req_hour_data.hourly_data = get_data_hbase(_from, measure_id, sensor_type, args)
 
-        logger.info(f"DATA: {req_hour_data.__dict__}")
-
-        if not DEBUG:
-            try:
-                InergySource.update_hourly_data(data=[req_hour_data.__dict__])
-            except Exception as ex:
-                logger.error(ex)
+            logger.info(f"DATA: {req_hour_data.__dict__}")
+            if not DEBUG and req_hour_data.hourly_data:
+                try:
+                    res = InergySource.update_hourly_data(data=[req_hour_data.__dict__])
+                    logger.info(res)
+                except Exception as ex:
+                    logger.error(ex)
 
 
 def gather_data(driver, fn_data, fn_insert, args, id_project):
     ttl = int(os.getenv('TTL'))
     t0 = time.time()
+
     index = 0
+    count = 0  # number of items processed
 
     while time.time() - t0 < ttl:
         with driver.session() as session:
             data = fn_data(session, namespace=args.namespace, limit=args.limit, id_project=id_project,
                            skip=args.skip + (args.limit * index)).data()
+
         if data:
             fn_insert(args, id_project, data)
             index += 1
+
+            if args.stop > 0:
+                if args.stop < count:
+                    break
+                count += len(data)
         else:
             break
 
@@ -124,7 +133,9 @@ def clean_ts_data(_from, data):
         return []
 
 
-def get_data_hbase(_from, measure_id, sensor_type):
+def get_data_hbase(_from, measure_id, sensor_type, args):
+    # start_date = parse(args.start_date, dayfirst=True)
+    # start_date.timestamp()
     hbase_conn = happybase.Connection(host=os.getenv('HBASE_HOST'), port=int(os.getenv('HBASE_PORT')),
                                       table_prefix=os.getenv('HBASE_TABLE_PREFIX'),
                                       table_prefix_separator=os.getenv('HBASE_TABLE_PREFIX_SEPARATOR'))
@@ -134,7 +145,8 @@ def get_data_hbase(_from, measure_id, sensor_type):
 
     # Gather TS data from measure_id
     for bucket in range(20):  # Bucket
-        for key, value in table.scan(row_prefix='~'.join([str(float(bucket)), measure_id]).encode()):
+        row_prefix = '~'.join([str(float(bucket)), measure_id])
+        for key, value in table.scan(row_prefix=row_prefix.encode()):
             _, _, timestamp = key.decode().split('~')
             # timestamp = datetime.fromtimestamp(int(timestamp))
             value = decode_hbase_values(value=value)

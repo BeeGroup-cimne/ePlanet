@@ -18,9 +18,9 @@ from utils.rdf.rdf_functions import generate_rdf
 from utils.rdf.save_rdf import save_rdf_with_source
 from utils.utils import read_config
 
-from mapping_data import settings
-from mapping_data.ontology.namespaces_definition import bigg_enums, units
-from mapping_data.sources.Czech.harmonizer.Mapper import Mapper
+import settings
+from ontology.namespaces_definition import bigg_enums, units
+from sources.Czech.harmonizer.Mapper import Mapper
 
 
 def harmonize_building_info(data, **kwargs):
@@ -178,20 +178,24 @@ def harmonize_building_emm(data, **kwargs):
         save_rdf_with_source(g, config['source'], config['neo4j'])
 
 
-def harmonize_municipality_ts(data, **kwargs):
+def harmonize_simple_ts(data, **kwargs):
+    # Variables
     namespace = kwargs['namespace']
     n = Namespace(namespace)
     config = kwargs['config']
     user = kwargs['user']
     freq = 'PT1M'
 
+    # DB Connections
     hbase_conn = config['hbase_store_harmonized_data']
     neo4j_connection = config['neo4j']
     neo = GraphDatabase.driver(**neo4j_connection)
 
-    df = pd.DataFrame(data)
-    df['device_subject'] = df['Unique ID'].apply(partial(device_subject, source=config['source']))
+    # Data processing
 
+    df = pd.DataFrame(data)
+
+    df['device_subject'] = df['Unique ID'].apply(partial(device_subject, source=config['source']))
     df = df[df['month'] < 13]
 
     available_years = [i for i in list(df.columns) if type(i) == int]
@@ -214,6 +218,9 @@ def harmonize_municipality_ts(data, **kwargs):
         sub_df['end'] = sub_df['end'].view(int) // 10 ** 9
         sub_df['value'] = sub_df[year]
         sub_df['isReal'] = True
+
+        # Drop rows with value is 0
+        sub_df = sub_df[sub_df['value'] != 0].copy()
 
         sub_df.set_index("ts", inplace=True)
         sub_df.sort_index(inplace=True)
@@ -255,7 +262,7 @@ def harmonize_municipality_ts(data, **kwargs):
                           row_fields=['bucket', 'start', 'listKey'])
 
 
-def harmonize_region_ts(data, **kwargs):
+def harmonize_complex_ts(data, **kwargs):
     namespace = kwargs['namespace']
     n = Namespace(namespace)
     config = kwargs['config']
@@ -285,13 +292,15 @@ def harmonize_region_ts(data, **kwargs):
 
         for x in range(1, 13):
             date = datetime.datetime(year=row['Year'], month=x, day=1)
-            date_end = date + relativedelta(month=1) - datetime.timedelta(days=1)
+            date_end = (date + relativedelta(months=1)) - datetime.timedelta(days=1)
             value = row[x]
             aux.append(
                 {"date": date, "date_end": date_end, "value": value, "Unique ID": unique_id, 'DataType': data_type,
                  'device_subject': row['device_subject']})
 
         sub_df = pd.DataFrame(aux)
+
+        sub_df = sub_df[sub_df['value'] != 0].copy()
 
         sub_df['ts'] = sub_df['date']
         sub_df['timestamp'] = sub_df['ts'].view(int) // 10 ** 9
@@ -324,7 +333,6 @@ def harmonize_region_ts(data, **kwargs):
 
         device_table = harmonized_nomenclature(mode=HarmonizedMode.ONLINE, data_type=data_type, R=False,
                                                C=False, O=False, aggregation_function="SUM", freq=freq, user=user)
-
         save_to_hbase(sub_df.to_dict(orient="records"),
                       device_table,
                       hbase_conn,

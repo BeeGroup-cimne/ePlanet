@@ -20,3 +20,4 @@
     HBASE_TABLE_CZ=harmonized_{0}_{1}_000_SUM_PT1M_eplanet
     
     DEBUG=False
+    TOKEN=

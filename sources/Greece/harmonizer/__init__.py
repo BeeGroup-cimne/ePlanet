@@ -30,5 +30,3 @@ def harmonize_command_line(arguments, config=None, settings=None):
             item.update({"Month": month})
             item.update({"Year": year})
             dic_list.append(item)
-
-        #harmonize_data(dic_list, namespace=args.namespace, user=args.user, config=config)

@@ -1,4 +1,3 @@
-import math
 from functools import partial
 from hashlib import sha256
 
@@ -65,16 +64,6 @@ def clean_static_data(df: pd.DataFrame, **kwargs):
     return df
 
 
-def is_float(string):
-    try:
-        if not math.isnan(float(string)):
-            return True
-        else:
-            return False
-    except:
-        return False
-
-
 def harmonize_ts_data(raw_df: pd.DataFrame, kwargs):
     namespace = kwargs['namespace']
     config = kwargs['config']
@@ -87,10 +76,10 @@ def harmonize_ts_data(raw_df: pd.DataFrame, kwargs):
 
     hbase_conn = config['hbase_store_harmonized_data']
 
-    # calc
-    raw_df['isDigit'] = raw_df['Current record'].apply(is_float)
-    aux_df = raw_df[raw_df['isDigit'] == True].copy()
-    aux_df['aux_value'] = aux_df['Current record'].astype(float) * aux_df['Variable'].astype(float)
+    raw_df['Current record'] = pd.to_numeric(raw_df['Current record'], errors='coerce')
+    aux_df = raw_df[raw_df['Current record'].notna()].copy()  # Rows with only numeric value
+
+    aux_df['aux_value'] = aux_df['Current record'] * aux_df['Variable'].astype(float)
     aux_df = aux_df[aux_df['aux_value'] >= 0]
     aux_df.dropna(inplace=True)
 

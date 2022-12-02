@@ -2,7 +2,7 @@ beautifulsoup4==4.10.0
 bs4==0.0.1
 certifi==2022.9.24
 charset-normalizer==2.1.1
-#data-importing-tool @ git+https://github.com/BeeGroup-cimne/beegroup_importing_tool@2d70991afc3a366e5040b13f0b9eb919b6e45c0f
+data-importing-tool @ git+https://github.com/BeeGroup-cimne/beegroup_importing_tool@2d70991afc3a366e5040b13f0b9eb919b6e45c0f
 et-xmlfile==1.1.0
 geographiclib==1.52
 geopy==2.2.0

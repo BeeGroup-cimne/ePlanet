@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import os
+from datetime import datetime, date
 
 import happybase
 import pandas as pd
@@ -19,28 +20,18 @@ def get_hbase_raw_data(cups):
                                       table_prefix_separator=os.getenv('HBASE_TABLE_PREFIX_SEPARATOR'))
 
     table = hbase_conn.table('raw_Greece_static_BuildingInfo__eplanet')
-
     ts_data = []
-
-    for year in range(2015, datetime.date.today().year + 1):
+    for year in range(2015, date.today().year + 1):
         for month in range(1, 13):
             row_prefix = '~'.join([str(year), str(month), cups])
             for key, value in table.scan(row_prefix=row_prefix.encode()):
                 _year, _month, _sensor_id = key.decode().split('~')
                 # timestamp = datetime.fromtimestamp(int(timestamp))
                 value = decode_hbase_values(value=value)
-                if value['info:Current record'].isnumeric():
-                    ts_data.append(
-                        {'date': datetime.date(year=int(_year), month=int(_month), day=1),
-                         'value': float(value['info:Current record'])})
+                ts_data.append(value)
+                print({'date': date(year=int(_year), month=int(_month), day=1),
+                       'value': value['info:Current record'], 'isDigit': value['info:Current record'].isdigit()})
     df = pd.DataFrame(ts_data)
-    df.set_index('date', inplace=True)
-    df.sort_index(inplace=True)
-    print(df)
-    # df.plot()
-    # plt.title(f"{_sensor_id}")
-    # plt.xticks(rotation=45)
-    # plt.show()
 
 
 def get_hbase_harmonized(cups):
@@ -56,21 +47,14 @@ def get_hbase_harmonized(cups):
                                           table_prefix_separator=os.getenv('HBASE_TABLE_PREFIX_SEPARATOR'))
         table = hbase_conn.table(
             os.getenv(f'HBASE_TABLE_{_from}').format('online', INVERTED_SENSOR_TYPE_TAXONOMY.get(sensor_type)))
-        ts_data = []
 
         # Gather TS data from measure_id
         for bucket in range(20):  # Bucket
             row_prefix = '~'.join([str(float(bucket)), measure_id])
             for key, value in table.scan(row_prefix=row_prefix.encode()):
                 _, _, timestamp = key.decode().split('~')
-                # timestamp = datetime.fromtimestamp(int(timestamp))
                 value = decode_hbase_values(value=value)
-                ts_data.append({'start': timestamp, 'end': value['info:end'], 'value': value['v:value']})
-
-        df = pd.DataFrame(ts_data)
-        df.set_index('start', inplace=True)
-        df.sort_index(inplace=True)
-        print(df)
+                print({'start': datetime.fromtimestamp(int(timestamp)), 'value': value['v:value']})
 
 
 if __name__ == '__main__':

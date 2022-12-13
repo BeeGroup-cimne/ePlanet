@@ -155,7 +155,7 @@ def clean_general_data(df: pd.DataFrame):
     df['StartDate'] = pd.to_datetime(df['StartDate'], format="%d%m%Y")
     df['EndDate'] = pd.to_datetime(df['EndDate'], format="%d%m%Y")
 
-    df['Unique ID'] = df['Unique ID'].astype(str)
+    df['Unique ID'] = df['Unique ID'].astype(str).str.pad(side='left', fillchar='5', width=11)
     df.sort_values(by=['Unique ID', 'StartDate'], inplace=True)
     df.drop_duplicates(inplace=True)
     df.rename(columns=lambda x: x.strip(), inplace=True)

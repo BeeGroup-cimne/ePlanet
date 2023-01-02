@@ -113,7 +113,6 @@ def clean_ts_data(_from, data):
         df.set_index('end', inplace=True)
         df.sort_index(inplace=True)
         df.dropna(inplace=True)
-        df = df[df['value'] > 0]
 
         if not df.empty and _from == 'GR':
             df['shifted'] = df['value'].shift(-1)
@@ -123,6 +122,8 @@ def clean_ts_data(_from, data):
             df = df[['isReal']].resample('M').mean()
             df['isReal'] = df['isReal'].round(3)
             df.rename(columns={'isReal': 'value'}, inplace=True)
+
+        df = df[df['value'] > 0]
 
         logger.info(f"Data had been cleaned successfully.")
         return [HourlyData(value=row['value'], timestamp=index.replace(hour=12, day=1).isoformat()).__dict__ for

@@ -4,7 +4,6 @@ import os
 from datetime import datetime, date
 
 import happybase
-import pandas as pd
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
 
@@ -14,7 +13,7 @@ from external_integration.utils import decode_hbase_values
 from external_integration.utils.neo4j import get_sensors_measurements_by_sensor_id
 
 
-def get_hbase_raw_data(cups: str) -> pd.DataFrame:
+def get_hbase_raw_data(cups: str):
     hbase_conn = happybase.Connection(host=os.getenv('HBASE_HOST'), port=int(os.getenv('HBASE_PORT')),
                                       table_prefix='eplanet_raw_data',
                                       table_prefix_separator=os.getenv('HBASE_TABLE_PREFIX_SEPARATOR'))
@@ -29,15 +28,10 @@ def get_hbase_raw_data(cups: str) -> pd.DataFrame:
                 value = decode_hbase_values(value=value)
                 ts_data.append({'date': date(year=int(_year), month=int(_month), day=1),
                                 'value': float(value['info:Current record'])})
-
-    df = pd.DataFrame(ts_data)
-    df['value'] = pd.to_numeric(df['value'], errors='coerce')
-    df.set_index('date', inplace=True)
-    df.sort_index(inplace=True)
-    return df
+    print(ts_data)
 
 
-def get_hbase_harmonized(cups: str) -> pd.DataFrame:
+def get_hbase_harmonized(cups: str):
     with driver.session() as session:
         res = get_sensors_measurements_by_sensor_id(session, cups).data()
 
@@ -50,7 +44,8 @@ def get_hbase_harmonized(cups: str) -> pd.DataFrame:
                                           table_prefix=os.getenv('HBASE_TABLE_PREFIX'),
                                           table_prefix_separator=os.getenv('HBASE_TABLE_PREFIX_SEPARATOR'))
         table = hbase_conn.table(
-            os.getenv(f'HBASE_TABLE_{_from}').format('online', INVERTED_SENSOR_TYPE_TAXONOMY.get(sensor_type)))
+            os.getenv(f'HBASE_TABLE_{_from}').format('online',
+                                                     INVERTED_SENSOR_TYPE_TAXONOMY.get(sensor_type)))
 
         # Gather TS data from measure_id
 
@@ -60,12 +55,7 @@ def get_hbase_harmonized(cups: str) -> pd.DataFrame:
                 _, _, timestamp = key.decode().split('~')
                 value = decode_hbase_values(value=value)
                 ts_data.append({'date': datetime.fromtimestamp(int(timestamp)), 'value': float(value['v:value'])})
-
-    df = pd.DataFrame(ts_data)
-    df = pd.to_numeric(df[0], errors='coerce')
-    df.set_index('date', inplace=True)
-    df.sort_index(inplace=True)
-    return df
+    print(ts_data)
 
 
 if __name__ == '__main__':
@@ -83,9 +73,5 @@ if __name__ == '__main__':
 
     for i in args.sensors.split(','):
         raw_df = get_hbase_raw_data(i)
-        raw_df.plot()
-        raw_df.show()
 
         harmonized_df = get_hbase_harmonized(i)
-        harmonized_df.plot()
-        harmonized_df.show()

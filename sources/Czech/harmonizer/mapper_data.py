@@ -217,6 +217,11 @@ def harmonize_simple_ts(data, **kwargs):
 
         sub_df['end'] = sub_df['end'].view(int) // 10 ** 9
         sub_df['value'] = sub_df[year]
+        if data_type == "plyn":
+            sub_df['value'] = sub_df['value'] * 10.69
+        elif data_type == "teplo":
+            sub_df['value'] = sub_df['value'] * 277.77
+
         sub_df['isReal'] = True
 
         # Drop rows with value is 0

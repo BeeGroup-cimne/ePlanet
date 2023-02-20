@@ -136,13 +136,47 @@ def harmonize_ts_data(raw_df: pd.DataFrame, kwargs):
                               row_fields=['bucket', 'start', 'listKey'])
 
 
+def building_filters(df):
+    if len(df.Municipality.unique()) > 1:
+        raise Exception("Error l'excel te més d'un municipi")
+    if df.Municipality.unique()[0] == "ΡΕΘΥΜΝΗΣ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΡΕΘΥΜΝΗΣ"]
+    if municipality == "ΑΓΙΟΥ ΝΙΚΟΛΑΟΥ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΑΓ.ΝΙΚΟΛΑΟΥ"]
+    if municipality == "ΧΑΝΙΩΝ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΧΑΝΙΩΝ"]
+    if municipality == "ΧΕΡΣΟΝΗΣΟΥ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΧΕΡΣΟΝΗΣΟΥ"]
+    if municipality == "ΗΡΑΚΛΕΙΟΥ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΗΡΑΚΛΕΙΟΥ"]
+    if municipality == "ΜΙΝΩΑ ΠΕΔΙΑΔΑΣ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΜΙΝΩΑ ΠΕΔΙΑΔΟΣ"]
+    if municipality == "ΑΓ.ΒΑΣΙΛΕΙΟΥ":
+        df1 = df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ"]
+        df2 = df[df['Name of the building or public lighting'].str.contains(".*ΔΗΜΟΣ.*ΒΑΣΙΛΕΙΟΥ.*", regex=True)]
+        df2 = df2[df2['Name of the building or public lighting'].str.contains("(?!.*ΦΟΠ)(?!.*ΦΩΤΙΣΜΟΣ)(?!.*ΦΩΤΙΣΜ)(?!.*ΦΩΤΕΙΝΟΙ)(?!.*ΑΝΤΛΙΟΣΤΑΘΜΟΣ)(?!.*ΑΦΟΔΕΥΤΗΡΙΑ)(?!.*ΠΑΡΚΙΝΓΚ)(?!.*Φ/B)(?!.*ΣΗΜΑΤΟΔΟΤΕΣ)")]
+        return pd.append([df1, df2])
+    if municipality == "ΑΜΑΡΙΟΥ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΑΜΑΡΙΟΥ"]
+    if municipality == "ΔΗΜΟΣ ΑΝΩΓΕΙΩΝ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΑΝΩΓΕΙΩΝ"]
+    if municipality == "ΑΠΟΚΟΡΩΝΟΥ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΑΠΟΚΟΡΩΝΟΥ"]
+    if municipality == "ΑΡΧΑΝΩΝ-ΑΣΤΕΡΟΥΣΙΩΝ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΑΡΧΑΝΩΝ"]
+    if municipality == "ΓΑΥΔΟΥ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΓΑΥΔΟΥ"]
+    if municipality == "ΓΟΡΤΥΝΑΣ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΓΟΡΤΥΝΑΣ"]
+    if municipality == "ΒΙΑΝΝΟΥ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΒΙΑΝΝΟΥ"]
+
+
 def clean_general_data(df: pd.DataFrame):
     df = df.applymap(decode_hbase)
 
     # Only buildings
-    define_building = 'ΔΗΜΟΣ ' + df['Municipality'].unique()[0]
-
-    df = df[df['Name of the building or public lighting'] == define_building].copy()
+    df = building_filters(df)
 
     df['StartDate'] = df['Previous recording date'].astype(str).str.zfill(8)
     df['EndDate'] = df['Recording date'].astype(str).str.zfill(8)

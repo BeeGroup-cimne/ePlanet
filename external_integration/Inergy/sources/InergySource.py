@@ -7,16 +7,17 @@ from external_integration.logger import logger
 
 class InergySource:
     token = None
-
+    base_uri = None
     @classmethod
-    def authenticate(cls):
+    def authenticate(cls, username, password, base_uri):
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded'
         }
-        res = requests.post(url=f"{os.getenv('INERGY_BASE_URL')}/account/login",
+        cls.base_uri = base_uri
+        res = requests.post(url=f"{base_uri}/account/login",
                             headers=headers,
-                            data={"grant_type": 'password', "username": os.getenv('INERGY_USERNAME'),
-                                  "password": os.getenv('INERGY_PASSWORD')}, timeout=15)
+                            data={"grant_type": 'password', "username": username,
+                                  "password": password}, timeout=15)
 
         if res.ok:
             cls.raw_token = res.json()
@@ -28,7 +29,8 @@ class InergySource:
     @classmethod
     def insert_elements(cls, data):
         headers = {'Authorization': f'Bearer {cls.token}'}
-        res = requests.post(url=f"{os.getenv('INERGY_BASE_URL')}/common/insert_element", headers=headers, json=data,
+        print(cls.base_uri)
+        res = requests.post(url=f"{cls.base_uri}/common/insert_element", headers=headers, json=data,
                             timeout=15)
 
         if res.ok:
@@ -40,8 +42,8 @@ class InergySource:
     def insert_supplies(cls, data):
         headers = {'Authorization': f'Bearer {cls.token}'}
 
-        res = requests.post(url=f"{os.getenv('INERGY_BASE_URL')}/common/insert_contract", headers=headers, json=data,
-                            timeout=15)
+        res = requests.post(url=f"{cls.base_uri}/common/insert_contract", headers=headers, json=data,
+                            timeout=300)
         if res.ok:
             return res.json()
         else:
@@ -51,7 +53,7 @@ class InergySource:
     def update_elements(cls, data):
         headers = {'Authorization': f'Bearer {cls.token}', 'Content-Type': 'application/json'}
 
-        res = requests.post(url=f"{os.getenv('INERGY_BASE_URL')}/common/update_element", headers=headers, json=data,
+        res = requests.post(url=f"{cls.base_uri}/common/update_element", headers=headers, json=data,
                             timeout=15)
         if res.ok:
             return res.json()
@@ -62,7 +64,7 @@ class InergySource:
     def update_supplies(cls, data):
         headers = {'Authorization': f'Bearer {cls.token}', 'Content-Type': 'application/json'}
 
-        res = requests.post(url=f"{os.getenv('INERGY_BASE_URL')}/common/update_contract", headers=headers, json=data,
+        res = requests.post(url=f"{cls.base_uri}/common/update_contract", headers=headers, json=data,
                             timeout=15)
         if res.ok:
             return res.json()
@@ -72,7 +74,7 @@ class InergySource:
     @classmethod
     def update_hourly_data(cls, data):
         headers = {'Authorization': f'Bearer {cls.token}', 'Content-Type': 'application/json'}
-        res = requests.post(url=f"{os.getenv('INERGY_BASE_URL')}/common/update_hourly_data", headers=headers, json=data,
+        res = requests.post(url=f"{cls.base_uri}/common/update_hourly_data", headers=headers, json=data,
                             timeout=10)
         if res.ok:
             return res.json()

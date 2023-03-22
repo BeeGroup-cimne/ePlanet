@@ -2,7 +2,7 @@ from utils.data_transformations import to_object_property
 
 from ontology.bigg_classes import Building, LocationInfo, BuildingSpace, Device, UtilityPointOfDelivery, \
     Organization
-from ontology.namespaces_definition import countries, bigg_enums
+from ontology.namespaces_definition import countries, bigg_enums, Bigg
 
 
 class Mapper(object):
@@ -16,7 +16,8 @@ class Mapper(object):
         Organization.set_namespace(namespace)
 
     def get_mappings(self, group):
-        organization = {
+
+        main_organization = {
             "name": "organization",
             "class": Organization,
             "type": {
@@ -24,12 +25,75 @@ class Mapper(object):
             },
             "params": {
                 "raw": {
-                    "subject": "Greece",
+                    "subject": "greece",
                     "organizationName": "Greece"
+                }
+            },
+            "links": {
+                "location_organization": {
+                    "type": Bigg.hasSubOrganization,
+                    "link": "__all__"
                 }
             }
         }
 
+        location_organization = {
+            "name": "location_organization",
+            "class": Organization,
+            "type": {
+                "origin": "row"
+            },
+            "params": {
+                "raw": {
+                    "organizationDivisionType": "Location"
+                },
+                "mapping": {
+                    "subject": {
+                        "key": "location_organization_subject",
+                        "operations": []
+                    },
+                    "organizationName": {
+                        "key": "Municipality",
+                        "operations": []
+                    }
+                }
+            },
+            "links": {
+                "building_organization": {
+                    "type": Bigg.hasSubOrganization,
+                    "link": "building_organization_subject"
+                }
+            }
+        }
+
+        building_organization = {
+            "name": "building_organization",
+            "class": Organization,
+            "type": {
+                "origin": "row"
+            },
+            "params": {
+                "raw": {
+                    "organizationDivisionType": "Building"
+                },
+                "mapping": {
+                    "subject": {
+                        "key": "building_organization_subject",
+                        "operations": []
+                    },
+                    "organizationName": {
+                        "key": "Name of the building or public lighting",
+                        "operations": []
+                    }
+                }
+            },
+            "links": {
+                "buildings": {
+                    "type": Bigg.managesBuilding,
+                    "link": "building_subject"
+                }
+            }
+        }
         buildings = {
             "name": "buildings",
             "class": Building,
@@ -51,21 +115,19 @@ class Mapper(object):
                     "buildingIDFromOrganization": {
                         "key": "Unique ID",
                         "operations": []
-                    },
-                    "hasLocationInfo": {
-                        "key": "hasLocationInfo",
-                        "operations": []
-                    },
-                    "hasSpace": {
-                        "key": "hasSpace",
-                        "operations": []
-                    },
-                    "pertainsToOrganization": {
-                        "key": "pertainsToOrganization",
-                        "operations": []
-                    },
+                    }
                 }
             },
+            "links": {
+                "building_space": {
+                    "type": Bigg.hasSpace,
+                    "link": "building_subject"
+                },
+                "locations": {
+                    "type": Bigg.hasLocationInfo,
+                    "link": "building_subject"
+                }
+            }
         }
 
         building_space = {
@@ -82,13 +144,15 @@ class Mapper(object):
                     "subject": {
                         "key": "building_space_subject",
                         "operations": []
-                    },
-                    "isObservedByDevice": {
-                        "key": "isObservedByDevice",
-                        "operations": []
                     }
                 }
             },
+            "links": {
+                "device": {
+                    "type": Bigg.isObservedByDevice,
+                    "link": "building_subject"
+                }
+            }
         }
 
         locations = {
@@ -149,34 +213,8 @@ class Mapper(object):
             }
         }
 
-        utility_point = {
-            "name": "utility_point",
-            "class": UtilityPointOfDelivery,
-            "type": {
-                "origin": "row"
-            },
-            "params": {
-                "raw": {
-                    "hasUtilityType": to_object_property("Electricity", namespace=bigg_enums)
-                },
-                "mapping": {
-                    "subject": {
-                        "key": 'utility_point_subject',
-                        "operations": []
-                    },
-                    "pointOfDeliveryIDFromOrganization": {
-                        "key": 'Unique ID',
-                        "operations": []
-                    },
-                    "hasDevice": {
-                        "key": 'isObservedByDevice',
-                        "operations": []
-                    }
-                }
-            }
-        }
-
         grouped_modules = {
-            "static": [organization, buildings, locations, building_space, device, utility_point]
+            "static": [main_organization, location_organization, building_organization, buildings,
+                       locations, building_space, device]
         }
         return grouped_modules[group]

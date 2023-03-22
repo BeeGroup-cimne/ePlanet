@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import datetime, date
 from typing import Optional
 
 from dateutil.relativedelta import relativedelta
@@ -21,7 +21,7 @@ class Element(object):
 
     @classmethod
     def create(cls, id_project, i):
-        building = i['n']
+        building = i['b']
         location = i['l']
         city = i['c']
 
@@ -31,6 +31,6 @@ class Element(object):
                            instance=1,
                            code=str(building.get('bigg__buildingIDFromOrganization')),
                            use='Equipment', typology=9, name=building.get('bigg__buildingName'),
-                           begin_date=str(date.today()),
+                           begin_date=str(date(2019, 1, 1)),
                            end_date=str(date.today() + relativedelta(years=10)),
                            location=Location.create(location, city).__dict__)

@@ -20,9 +20,10 @@ def gather_data(config, settings, args):
                 df = pd.read_excel(path, skiprows=4, sheet_name=sheet_name)
                 df = df.iloc[2:].copy()
                 df = df.rename(columns=lambda x: x.strip())
-                save_data(data=df.to_dict(orient='records'), data_type="BuildingInfo",
-                          row_keys=["Year", "Month", 'Unique ID'],
-                          column_map=[("info", "all")], config=config, settings=settings, args=args)
+                if all([x in df.columns for x in ['Unique ID', 'Year', 'Month']]) and not df.empty:
+                    save_data(data=df.to_dict(orient='records'), data_type="BuildingInfo",
+                              row_keys=["Year", "Month", 'Unique ID'],
+                              column_map=[("info", "all")], config=config, settings=settings, args=args)
 
 
 def save_data(data, data_type, row_keys, column_map, config, settings, args):

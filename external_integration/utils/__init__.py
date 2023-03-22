@@ -1,9 +1,9 @@
 import os
 import time
-
+import settings
 import happybase
 import pandas as pd
-
+from datetime import datetime
 from external_integration.Inergy.domain.Element import Element
 from external_integration.Inergy.domain.HourlyData import HourlyData
 from external_integration.Inergy.domain.RequestHourlyData import RequestHourlyData
@@ -23,11 +23,13 @@ def fn_insert_elements(args, id_project, data):
 
     logger.info(f"DATA: {to_insert}")
 
-    if not DEBUG:
-        if args.method == 'insert':
-            InergySource.insert_elements(data=to_insert)
-        elif args.method == 'update':
-            InergySource.update_elements(data=to_insert)
+    res = InergySource.insert_elements(data=to_insert)
+    logger.info(res)
+    # if not DEBUG:
+    #     if args.method == 'insert':
+    #
+    #     elif args.method == 'update':
+    #         InergySource.update_elements(data=to_insert)
 
 
 def fn_insert_supplies(args, id_project, data):
@@ -38,33 +40,41 @@ def fn_insert_supplies(args, id_project, data):
             to_insert.append(supply.__dict__)
 
     logger.info(f"DATA: {to_insert}")
+    res = InergySource.insert_supplies(data=to_insert)
+    logger.info(res)
+    # if not DEBUG:
+    #     if args.method == 'insert':
+    #         InergySource.insert_supplies(data=to_insert)
+    #     elif args.method == 'update':
+    #         InergySource.update_supplies(data=to_insert)
 
-    if not DEBUG:
-        if args.method == 'insert':
-            InergySource.insert_supplies(data=to_insert)
-        elif args.method == 'update':
-            InergySource.update_supplies(data=to_insert)
 
-
-def fn_insert_hourly_data(args, id_project, data):
+def fn_insert_hourly_data(args, id_project, data, config, user):
     for i in data:
-        _from, sensor_id, sensor_type = get_sensor_id(i['s'].get('uri'))
+        _from, sensor_id, sensor_type = get_sensor_id(i['s'].get('uri'), i['m.uri'])
         if sensor_type and _from and sensor_id:
             cups = f"{sensor_id}-{sensor_type}" if _from == 'CZ' else sensor_id
-            cups = cups[:20]
-            measure_id = i['m'].get('uri').split('#')[-1]
+            measure_id = i['mes.uri'].split('#')[-1]
 
             logger.info(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
             print(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
 
+            table = {"type": i['m.uri'].split('#')[1],
+                     "RCO": ('1' if i['s'].get('bigg__timeSeriesIsRegular') else '0') +
+                            ('1' if i['s'].get('bigg__timeSeriesIsCumulative') else '0') +
+                            ('1' if i['s'].get('bigg__timeSeriesIsOnChange') else '0'),
+                     "AGG": i['s'].get('bigg__timeSeriesTimeAggregationFunction'),
+                     "FRE": i['s'].get('bigg__timeSeriesFrequency'),
+                     "USER": user
+                     }
             req_hour_data = RequestHourlyData(instance=1, id_project=id_project, cups=cups,
                                               sensor=str(SensorEnum[sensor_type].value),
                                               hourly_data=[])
 
-            req_hour_data.hourly_data = get_data_hbase(_from, measure_id, sensor_type, args)
+            req_hour_data.hourly_data = get_data_hbase(_from, measure_id, sensor_type, args.year, table, config)
 
             logger.info(f"DATA: {req_hour_data.__dict__}")
-            if not DEBUG and req_hour_data.hourly_data:
+            if req_hour_data.hourly_data:
                 try:
                     res = InergySource.update_hourly_data(data=[req_hour_data.__dict__])
                     logger.info(res)
@@ -115,15 +125,6 @@ def clean_ts_data(_from, data):
         df.dropna(inplace=True)
         df = df[df['value'] > 0]
 
-        if not df.empty and _from == 'GR':
-            df['shifted'] = df['value'].shift(-1)
-            df['isReal'] = df['shifted'] - df['value']
-            df = df[df['isReal'] >= 0]
-            df = df[['isReal']].resample('D').interpolate()
-            df = df[['isReal']].resample('M').mean()
-            df['isReal'] = df['isReal'].round(3)
-            df.rename(columns={'isReal': 'value'}, inplace=True)
-
         logger.info(f"Data had been cleaned successfully.")
         return [HourlyData(value=row['value'], timestamp=index.replace(hour=12, day=1).isoformat()).__dict__ for
                 index, row in
@@ -133,24 +134,38 @@ def clean_ts_data(_from, data):
         return []
 
 
-def get_data_hbase(_from, measure_id, sensor_type, args):
-    # start_date = parse(args.start_date, dayfirst=True)
-    # start_date.timestamp()
-    hbase_conn = happybase.Connection(host=os.getenv('HBASE_HOST'), port=int(os.getenv('HBASE_PORT')),
-                                      table_prefix=os.getenv('HBASE_TABLE_PREFIX'),
-                                      table_prefix_separator=os.getenv('HBASE_TABLE_PREFIX_SEPARATOR'))
-    table = hbase_conn.table(
-        os.getenv(f'HBASE_TABLE_{_from}').format('online', INVERTED_SENSOR_TYPE_TAXONOMY.get(sensor_type)))
-    ts_data = []
+def get_data_hbase(_from, measure_id, sensor_type, year, table_p, config):
 
-    # Gather TS data from measure_id
-    for bucket in range(20):  # Bucket
-        row_prefix = '~'.join([str(float(bucket)), measure_id])
-        for key, value in table.scan(row_prefix=row_prefix.encode()):
+    # calculate buckets with a list of [(ts_ini of bucket, ts_end of bucket, bucket, index),...]
+    start_date = int(datetime(int(year), 1, 1).timestamp())
+    end_date = int(datetime(int(year), 12, 31).timestamp())
+    bucket_ts_ini = (int(start_date) // settings.ts_buckets)
+    bucket_ts_end = (int(end_date) // settings.ts_buckets)
+    if end_date < ((bucket_ts_ini + 1) * settings.ts_buckets):
+        bucket_map = [(start_date, end_date, bucket_ts_ini % settings.buckets, 1)]
+    else:
+        bucket_map = [(start_date, (bucket_ts_ini + 1) * settings.ts_buckets, bucket_ts_ini % settings.buckets, 1)]
+
+    for x in range(bucket_ts_ini + 1, bucket_ts_end):
+        bucket_map.append((x * settings.ts_buckets, (x + 1) * settings.ts_buckets, x % settings.buckets, len(bucket_map) + 1))
+    if not end_date < ((bucket_ts_ini + 1) * settings.ts_buckets):
+        bucket_map.append((bucket_ts_end * settings.ts_buckets, end_date, bucket_ts_end % settings.buckets, len(bucket_map) + 1))
+    bucket_iter = iter(bucket_map)
+
+    # get data from hbase
+    ts_data = []
+    for ts_ini, ts_end, bucket, index in bucket_iter:
+        row_start = '~'.join([str(int(bucket)), measure_id, str(int(ts_ini))])
+        row_end = '~'.join([str(int(bucket)), measure_id, str(int(ts_end))])
+
+        hbase_conn = happybase.Connection(**config['hbase_store_harmonized_data'])
+        table = hbase_conn.table('harmonized_online_{type}_{RCO}_{AGG}_{FRE}_{USER}'.format(**table_p))
+
+        for key, value in table.scan(row_start=row_start.encode(), row_stop=row_end.encode()):
             _, _, timestamp = key.decode().split('~')
-            # timestamp = datetime.fromtimestamp(int(timestamp))
             value = decode_hbase_values(value=value)
             ts_data.append({'start': timestamp, 'end': value['info:end'], 'value': value['v:value']})
+
     logger.info(f"We found {len(ts_data)} records from {measure_id}")
 
     return clean_ts_data(_from, ts_data) if ts_data else []
@@ -158,7 +173,6 @@ def get_data_hbase(_from, measure_id, sensor_type, args):
 
 def decode_hbase_values(value):
     item = dict()
-
     for k, v in value.items():
         item.update({k.decode(): v.decode()})
     return item

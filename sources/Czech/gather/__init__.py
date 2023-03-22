@@ -1,6 +1,8 @@
 import argparse
 import os
+import re
 
+import numpy as np
 import pandas as pd
 from utils.hbase import save_to_hbase
 from utils.kafka import save_to_kafka
@@ -27,7 +29,7 @@ def gather(arguments, settings, config):
         gather_building_eem(args, config, settings)
 
     if args.kind_of_file == 'ts':
-        freq = 'PT1M'
+        freq = 'P1M'
 
         for file in os.listdir(args.file):
             log_string(f"File: {file}")
@@ -35,19 +37,31 @@ def gather(arguments, settings, config):
             xl = pd.ExcelFile(f"{args.file}/{file}")
 
             for i in xl.sheet_names:
-                if 'plyn' in i:  # GAS
+                if 'List1' in i:
+                    pass
+                elif 'stavy' in i:
+                    pass
+                elif 'info' in i:
+                    pass
+                elif i in ["Spotřeba tepla"]:
+                    pass  # TODO "Spotřeba tepla"
+                elif re.match(r'[0-9]{4}', i):
+                    pass
+                elif i in ['plyn', 'Spotřeba plynu']:  # GAS
                     gather_ts_simple_gas(args, config, file, freq, i, settings)
-
-                elif 'elektřin' in i:
+                elif i in ['elektřina', 'Spotřeba elektřiny']:
                     gather_ts_simple_electricity(args, config, file, freq, i, settings)
 
                 elif 'souhrn' in i:
-                    gather_ts_complex(args, config, file, i, settings)
+                    gather_ts_complex(args, config, file, freq, i, settings)
+                else:
+                    raise Exception(f"error any found: {i}")
 
 
-def gather_ts_complex(args, config, file, i, settings):
+def gather_ts_complex(args, config, file, freq, i, settings):
     try:
         df = pd.read_excel(f"{args.file}/{file}", sheet_name=i, skiprows=99)
+        df = df.iloc[:, 1:17]
         df.dropna(how='all', axis='columns', inplace=True)
 
         df['Unique ID'] = file.split('_')[0]
@@ -55,7 +69,7 @@ def gather_ts_complex(args, config, file, i, settings):
                   row_keys=["Unique ID"],
                   column_map=[("info", "all")], config=config, settings=settings, args=args,
                   table_name=raw_nomenclature(mode=RawMode.TIMESERIES, data_type="Consumptions",
-                                              frequency="",
+                                              frequency="freq",
                                               user=args.user, source=config['source']))
     except Exception as ex:
         log_string(ex)

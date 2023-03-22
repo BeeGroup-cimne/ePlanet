@@ -1,7 +1,7 @@
 from ontology.bigg_classes import Building, LocationInfo, BuildingSpace, Area, \
     EnergyPerformanceCertificate, AreaType, AreaUnitOfMeasurement, BuildingOwnership, Device, \
     Element, EnergyEfficiencyMeasure, EnergySaving, Project, EnergyPerformanceCertificateAdditionalInfo, Organization
-from ontology.namespaces_definition import units, countries, bigg_enums
+from ontology.namespaces_definition import units, countries, bigg_enums, Bigg
 
 
 class Mapper(object):
@@ -24,7 +24,7 @@ class Mapper(object):
         Organization.set_namespace(namespace)
 
     def get_mappings(self, group):
-        organization = {
+        main_organization = {
             "name": "organization",
             "class": Organization,
             "type": {
@@ -32,8 +32,71 @@ class Mapper(object):
             },
             "params": {
                 "raw": {
-                    "subject": "Czech",
+                    "subject": "czech",
                     "organizationName": "Czech"
+                }
+            },
+            "links": {
+                "location_organization": {
+                    "type": Bigg.hasSubOrganization,
+                    "link": "__all__"
+                }
+            }
+        }
+        location_organization = {
+            "name": "location_organization",
+            "class": Organization,
+            "type": {
+                "origin": "row"
+            },
+            "params": {
+                "raw": {
+                    "organizationDivisionType": "Location"
+                },
+                "mapping": {
+                    "subject": {
+                        "key": "location_organization_subject",
+                        "operations": []
+                    },
+                    "organizationName": {
+                        "key": "Municipality",
+                        "operations": []
+                    }
+                }
+            },
+            "links": {
+                "building_organization": {
+                    "type": Bigg.hasSubOrganization,
+                    "link": "building_organization_subject"
+                }
+            }
+        }
+
+        building_organization = {
+            "name": "building_organization",
+            "class": Organization,
+            "type": {
+                "origin": "row"
+            },
+            "params": {
+                "raw": {
+                    "organizationDivisionType": "Building"
+                },
+                "mapping": {
+                    "subject": {
+                        "key": "building_organization_subject",
+                        "operations": []
+                    },
+                    "organizationName": {
+                        "key": "building_name",
+                        "operations": []
+                    }
+                }
+            },
+            "links": {
+                "buildings": {
+                    "type": Bigg.managesBuilding,
+                    "link": "building_subject"
                 }
             }
         }
@@ -62,36 +125,21 @@ class Mapper(object):
                         "key": "YearOfConstruction",
                         "operations": []
                     },
-                    "buildingOpeningHour": {
-                        "key": "Occupancy hours",
-                        "operations": []
-                    },
-                    "hasLocationInfo": {
-                        "key": "hasLocationInfo",
-                        "operations": []
-                    },
-                    "pertainsToOrganization": {
-                        "key": "pertainsToOrganization",
-                        "operations": []
-                    },
-                    "hasBuildingOwnership": {
-                        "key": "hasBuildingOwnership",
-                        "operations": []
-                    },
-                    "hasEPC": {
-                        "key": "hasEPC",
-                        "operations": []
-                    },
-                    "hasProject": {
-                        "key": "hasProject",
-                        "operations": []
-                    },
-                    "hasSpace": {
-                        "key": "building_space_uri",
-                        "operations": []
-                    },
-
                 }
+            },
+            "links": {
+                "building_space": {
+                    "type": Bigg.hasSpace,
+                    "link": "building_subject"
+                },
+                "location_info": {
+                    "type": Bigg.hasLocationInfo,
+                    "link": "building_subject"
+                },
+                "energy_performance_certificate": {
+                    "type": Bigg.hasEPC,
+                    "link": "building_subject"
+                },
             }
         }
 
@@ -111,19 +159,25 @@ class Mapper(object):
                         "operations": []
                     },
                     "hasBuildingSpaceUseType": {
-                        "key": "hasBuildingSpaceUseType",
-                        "operations": []
-                    },
-                    "hasArea": {
-                        "key": "hasArea",
-                        "operations": []
-                    },
-                    "isObservedByDevice": {
-                        "key": "device_uri",
+                        "key": "buildingSpaceUseType",
                         "operations": []
                     }
                 }
             },
+            "links": {
+                "gross_floor_area": {
+                    "type": Bigg.hasArea,
+                    "link": "building_subject"
+                },
+                "element": {
+                    "type": Bigg.isAssociatedWithElement,
+                    "link": "building_subject"
+                },
+                "device": {
+                    "type": Bigg.isObservedByDevice,
+                    "link": "building_subject"
+                },
+            }
         }
 
         location_info = {
@@ -198,22 +252,6 @@ class Mapper(object):
             }
         }
 
-        owner = {
-            "name": "owner",
-            "class": BuildingOwnership,
-            "type": {
-                "origin": "row"
-            },
-            "params": {
-                "mapping": {
-                    "subject": {
-                        "key": "building_ownership_subject",
-                        "operations": []
-                    }
-                }
-            },
-        }
-
         energy_performance_certificate = {
             "name": "energy_performance_certificate",
             "class": EnergyPerformanceCertificate,
@@ -233,28 +271,38 @@ class Mapper(object):
                     "energyPerformanceCertificateClass": {
                         "key": "EnergyCertificateQualification",
                         "operations": []
-                    },
-                    "hasAdditionalInfo": {
-                        "key": "energy_performance_certificate_additional_uri",
-                        "operations": []
                     }
                 }
+            },
+            "links": {
+                "epc_add": {
+                    "type": Bigg.hasAdditionalInfo,
+                    "link": "building_subject"
+                },
             }
         }
 
-        project = {
-            "name": "project",
-            "class": Project,
+        epc_add = {
+            "name": "epc_add",
+            "class": EnergyPerformanceCertificateAdditionalInfo,
             "type": {
                 "origin": "row"
             },
             "params": {
                 "mapping": {
                     "subject": {
-                        "key": "project_subject",
+                        "key": "energy_performance_certificate_additional_subject",
+                        "operations": []
+                    },
+                    "solarPVSystemPresence": {
+                        "key": "SolarPV",
+                        "operations": []
+                    },
+                    "solarThermalSystemPresence": {
+                        "key": "SolarThermal",
                         "operations": []
                     }
-                }
+                },
             }
         }
 
@@ -269,21 +317,13 @@ class Mapper(object):
                     "subject": {
                         "key": "element_subject",
                         "operations": []
-                    },
-                    "isObservedByDevice": {
-                        "key": "device_uri",
-                        "operations": []
-                    },
-                    "isAssociatedWithSpace": {
-                        "key": "building_space_uri",
-                        "operations": []
                     }
                 }
             }
         }
 
-        devices = {
-            "name": "devices",
+        device = {
+            "name": "device",
             "class": Device,
             "type": {
                 "origin": "row"
@@ -298,6 +338,28 @@ class Mapper(object):
             }
         }
 
+        eem_element = {
+            "name": "element",
+            "class": Element,
+            "type": {
+                "origin": "row"
+            },
+            "params": {
+                "mapping": {
+                    "subject": {
+                        "key": "element_subject",
+                        "operations": []
+                    }
+                }
+            },
+            "links": {
+                "eem": {
+                    "type": Bigg.isAffectedByMeasure,
+                    "link": "energy_efficiency_measure_subject"
+                }
+            }
+        }
+
         eem = {
             "name": "eem",
             "class": EnergyEfficiencyMeasure,
@@ -307,11 +369,14 @@ class Mapper(object):
             "params": {
                 "raw": {
                     "hasEnergyEfficiencyMeasureInvestmentCurrency": units["CzechKoruna"],
-                    "energyEfficiencyMeasureCurrencyExchangeRate": "0.041",
                 },
                 "mapping": {
                     "subject": {
                         "key": "energy_efficiency_measure_subject",
+                        "operations": []
+                    },
+                    "energyEfficiencyMeasureCurrencyExchangeRate": {
+                        "key": "Currency Rate",
                         "operations": []
                     },
                     "energyEfficiencyMeasureInvestment": {
@@ -329,16 +394,14 @@ class Mapper(object):
                     "energyEfficiencyMeasureCO2Reduction": {
                         "key": "Annual CO2 reduction",
                         "operations": []
-                    },
-                    "producesSaving": {
-                        "key": "producesSaving",
-                        "operations": []
-                    },
-                    "affectsElement": {
-                        "key": "element_uri",
-                        "operations": []
                     }
                 },
+                "links": {
+                    "energy_saving": {
+                        "type": Bigg.producesSaving,
+                        "link": "energy_efficiency_measure_subject"
+                    }
+                }
             }
         }
 
@@ -367,31 +430,10 @@ class Mapper(object):
             }
         }
 
-        epc_add = {
-            "name": "epc_add",
-            "class": EnergyPerformanceCertificateAdditionalInfo,
-            "type": {
-                "origin": "row"
-            },
-            "params": {
-                "mapping": {
-                    "subject": {
-                        "key": "energy_performance_certificate_additional_subject",
-                        "operations": []
-                    }, "solarPVSystemPresence": {
-                        "key": "solarPVSystemPresence",
-                        "operations": []
-                    }, "solarThermalSystemPresence": {
-                        "key": "solarThermalSystemPresence",
-                        "operations": []
-                    }
-                },
-            }
-        }
-
         grouped_modules = {
-            "building_info": [organization, buildings, building_space, location_info, gross_floor_area, owner,
-                              energy_performance_certificate, project, devices, element, epc_add],
-            "emm": [eem, energy_saving]
+            "building_info": [main_organization, location_organization, building_organization, buildings,
+                              building_space, location_info, gross_floor_area, energy_performance_certificate, epc_add,
+                              device, element],
+            "emm": [eem_element, eem, energy_saving]
         }
         return grouped_modules[group]

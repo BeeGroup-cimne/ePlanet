@@ -4,19 +4,21 @@ from typing import Optional
 
 from external_integration.constants import SENSOR_TYPE_TAXONOMY
 
+ns_map = {'https://czech.cz': "CZ", 'https://greece.gr': "GR"}
 
-def get_sensor_id(sensor_uri):
-    split_uri = sensor_uri.split('-')
-    if len(split_uri) == 8:
-        sensor_id = '-'.join(split_uri[2:5])
-        sensor_type = SENSOR_TYPE_TAXONOMY.get(split_uri[5])
-        _from = 'CZ'
 
+def get_sensor_id(sensor_uri, measurement_uri):
+    split_uri = sensor_uri.split('#')
+    if split_uri[0] in ns_map.keys():
+        _from = ns_map[split_uri[0]]
+        if _from == "CZ":
+            sensor_id = "-".join(split_uri[1].split("-")[4:7])
+        elif _from == "GR":
+            sensor_id = split_uri[1].split("-")[4]
+
+        sensor_type = SENSOR_TYPE_TAXONOMY.get(measurement_uri.split("#")[1])
     else:
-        sensor_id = split_uri[2]
-        sensor_type = SENSOR_TYPE_TAXONOMY.get(split_uri[3])
-        _from = 'GR'
-
+        raise Exception("ADD namespace in map list in Supply")
     return _from, sensor_id, sensor_type
 
 
@@ -43,7 +45,8 @@ class Supply(object):
 
     @classmethod
     def create(cls, id_project, sensor):
-        _from, sensor_id, sensor_type = get_sensor_id(sensor['s']['uri'])
+        print(sensor)
+        _from, sensor_id, sensor_type = get_sensor_id(sensor['s']['uri'], sensor['m.uri'])
 
         if not sensor_type:
             return None

@@ -12,14 +12,20 @@ def convert(tz):
 
 
 def get_buildings(session, id_project, namespace, mandatory_year):
-    mandatory_year = pd.to_datetime(f"{mandatory_year}-01-01")
-    query = f"""MATCH (c)<-[:bigg__hasAddressCity]-(l:bigg__LocationInfo)<-[:bigg__hasLocationInfo]-(b:bigg__Building)
-    -[:bigg__hasSpace]->(bs:bigg__BuildingSpace)-[:bigg__isObservedByDevice]->(d)-[:bigg__hasSensor]->(s:bigg__Sensor)
-                WHERE s.uri contains '{namespace}' and c.geo__name='{PROJECTS[id_project]}' 
-                and s.bigg__timeSeriesEnd > datetime("{convert(mandatory_year).to_pydatetime().isoformat()}")
-                and s.bigg__timeSeriesStart < datetime("{convert(mandatory_year).to_pydatetime().isoformat()}")
-                    RETURN b, l, c
+    mandatory_year_end = pd.to_datetime(f"{mandatory_year}-01-01")
+    mandatory_year_start = pd.to_datetime(f"{mandatory_year}-12-31")
+    query = f"""MATCH (o:bigg__Organization)-[:bigg__hasSubOrganization]->(bo:bigg__Organization)-[
+    :bigg__managesBuilding]->(b:bigg__Building) 
+    MATCH (c)<-[:bigg__hasAddressCity]-(lo:bigg__LocationInfo)<-[:bigg__hasLocationInfo]-(b)
+    MATCH(b)-[:bigg__hasSpace]->(bs:bigg__BuildingSpace)-[
+    :bigg__isObservedByDevice]->(d)-[:bigg__hasSensor]->(s:bigg__Sensor) 
+    WHERE s.uri contains '{namespace}' and 
+    o.uri ='{PROJECTS[id_project]}'
+                and s.bigg__timeSeriesEnd > datetime("{convert(mandatory_year_end).to_pydatetime().isoformat()}")
+                and s.bigg__timeSeriesStart < datetime("{convert(mandatory_year_start).to_pydatetime().isoformat()}")
+                    RETURN b, lo, c
                 """
+    # mandatory_year +1 - 1 day
     return session.run(query)
 
 
@@ -34,27 +40,32 @@ def get_point_of_delivery(session, namespace, skip, limit):
 
 
 def get_sensors(session, id_project, namespace, mandatory_year):
-    mandatory_year = pd.to_datetime(f"{mandatory_year}-01-01")
-    query = f"""MATCH (c)<-[:bigg__hasAddressCity]-(l:bigg__LocationInfo)<-[:bigg__hasLocationInfo]-(b:bigg__Building)
-        -[:bigg__hasSpace]->(bs:bigg__BuildingSpace)-[:bigg__isObservedByDevice]->(d)-[:bigg__hasSensor]->(s:bigg__Sensor)-
+    mandatory_year_end = pd.to_datetime(f"{mandatory_year}-01-01")
+    mandatory_year_start = pd.to_datetime(f"{mandatory_year}-12-31")
+
+    query = f"""MATCH (o:bigg__Organization)-[:bigg__hasSubOrganization]->(bo:bigg__Organization)-[
+    :bigg__managesBuilding]->(b:bigg__Building)-[:bigg__hasSpace]->(bs:bigg__BuildingSpace)-[
+    :bigg__isObservedByDevice]->(d)-[:bigg__hasSensor]->(s:bigg__Sensor)-
         [:bigg__hasMeasuredProperty]->(m)
-        WHERE s.uri contains '{namespace}' and c.geo__name='{PROJECTS[id_project]}' 
-        and s.bigg__timeSeriesEnd > datetime("{convert(mandatory_year).to_pydatetime().isoformat()}")
-        and s.bigg__timeSeriesStart < datetime("{convert(mandatory_year).to_pydatetime().isoformat()}")
+        WHERE s.uri contains '{namespace}' and o.uri ='{PROJECTS[id_project]}' 
+        and s.bigg__timeSeriesEnd > datetime("{convert(mandatory_year_end).to_pydatetime().isoformat()}")
+        and s.bigg__timeSeriesStart < datetime("{convert(mandatory_year_start).to_pydatetime().isoformat()}")
         RETURN s,m.uri
     """
     return session.run(query)
 
 
 def get_sensors_measurements(session, id_project, namespace, mandatory_year):
-    mandatory_year = pd.to_datetime(f"{mandatory_year}-01-01")
-    query = f"""MATCH (c)<-[:bigg__hasAddressCity]-(l:bigg__LocationInfo)<-[:bigg__hasLocationInfo]-(b:bigg__Building)
-         -[:bigg__hasSpace]->(bs:bigg__BuildingSpace)-[:bigg__isObservedByDevice]->(d)-[:bigg__hasSensor]->(s:bigg__Sensor)-
+    mandatory_year_end = pd.to_datetime(f"{mandatory_year}-01-01")
+    mandatory_year_start = pd.to_datetime(f"{mandatory_year}-12-31")
+    query = f"""MATCH (o:bigg__Organization)-[:bigg__hasSubOrganization]->(bo:bigg__Organization)-[
+    :bigg__managesBuilding]->(b:bigg__Building)-[:bigg__hasSpace]->(bs:bigg__BuildingSpace)-[
+    :bigg__isObservedByDevice]->(d)-[:bigg__hasSensor]->(s:bigg__Sensor)-
          [:bigg__hasMeasurement]->(mes)
          MATCH (s)-[:bigg__hasMeasuredProperty]->(m)
-         WHERE s.uri contains '{namespace}' and c.geo__name='{PROJECTS[id_project]}' 
-         and s.bigg__timeSeriesEnd > datetime("{convert(mandatory_year).to_pydatetime().isoformat()}")
-         and s.bigg__timeSeriesStart < datetime("{convert(mandatory_year).to_pydatetime().isoformat()}")
+         WHERE s.uri contains '{namespace}' and o.uri ='{PROJECTS[id_project]}'
+         and s.bigg__timeSeriesEnd > datetime("{convert(mandatory_year_end).to_pydatetime().isoformat()}")
+         and s.bigg__timeSeriesStart < datetime("{convert(mandatory_year_start).to_pydatetime().isoformat()}")
          RETURN s, mes.uri, m.uri
      """
 

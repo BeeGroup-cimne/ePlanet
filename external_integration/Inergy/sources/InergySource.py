@@ -29,7 +29,7 @@ class InergySource:
     @classmethod
     def insert_elements(cls, data):
         headers = {'Authorization': f'Bearer {cls.token}'}
-        print(cls.base_uri)
+        # print(cls.base_uri)
         res = requests.post(url=f"{cls.base_uri}/common/insert_element", headers=headers, json=data,
                             timeout=15)
 

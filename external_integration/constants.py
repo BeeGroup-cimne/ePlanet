@@ -11,8 +11,12 @@ SENSOR_TYPE_TAXONOMY = {"EnergyConsumptionGas": "GAS", "EnergyConsumptionWaterHe
 INVERTED_SENSOR_TYPE_TAXONOMY = {v: k for k, v in SENSOR_TYPE_TAXONOMY.items()}
 
 PROJECTS = {
-    # greece
-    '852': "Chania", '882': 'Heraklion', '866': 'Chersonisos', '886': 'Viannos', '853': 'Rethymno',
+    # greece faltan añadir municipios y region ('872' : 'Kantanou-Selinou', '879' : 'Platania', '880' : 'Mylopotamou', '883' : 'Maleviziou', '884' : 'Festou', '888' : 'Siteias', '889' : 'Ierapetras')
+    # '852': "Chania", '882': 'Heraklion', '866': 'Chersonisos', '886': 'Viannos', '853': 'Rethymno',
+    # '871': 'Apokoronas', '852': 'Chania', '853': 'Rethymno', '881': 'Anogeia', '882': 'Heraklion',
+    # '866': 'Chersonisos', '885': 'Minoa Pediada', '886': 'Viannos', '887': 'Agios Nikolaos',
+    '871': 'https://greece.gr#ORGANIZATION-apokoronou', '852': 'https://greece.gr#ORGANIZATION-chanion', '853': 'https://greece.gr#ORGANIZATION-rethymno', '881': 'https://greece.gr#ORGANIZATION-anogeion', '882': 'https://greece.gr#ORGANIZATION-heraklion',
+    '866': 'https://greece.gr#ORGANIZATION-hersonissou', '885': 'https://greece.gr#ORGANIZATION-minoa-pediadas', '886': 'https://greece.gr#ORGANIZATION-viannou', '887': 'https://greece.gr#ORGANIZATION-agiou-nikolaou',
     # zlin
     '856': 'Karolinka', '857': 'Dolní Bečva', '873': 'Bánov', '876': 'Hluk', '877': 'Pozlovice',
     '878': 'Bohuslavice u Zlína', '891': 'Petruvka', '906': 'Horní Becva', '907': 'Liptál', '908': 'Zubrí',

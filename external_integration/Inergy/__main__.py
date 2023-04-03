@@ -63,9 +63,10 @@ if __name__ == '__main__':
             with driver.session() as session:
                 buildings = get_buildings(session, namespace=args.namespace, id_project=i,
                                           mandatory_year=args.mandatory_year).data()
+
             if buildings:
-                fn_insert_elements(args, i, buildings)
-                logger.info(f"The from {i} has been integrated.")
+               fn_insert_elements(args, i, buildings)
+               logger.info(f"The from {i} has been integrated.")
 
     # insert devices
     if args.data == "supplies" or args.data == "all":

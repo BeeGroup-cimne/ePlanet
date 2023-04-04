@@ -171,11 +171,11 @@ class Mapper(object):
                         "operations": []
                     },
                     "addressStreetName": {
-                        "key": "Street",
+                        "key": "Street name",
                         "operations": []
                     },
                     "addressStreetNumber": {
-                        "key": "Street num",
+                        "key": "Street number",
                         "operations": []
                     },
                     "hasAddressCity": {

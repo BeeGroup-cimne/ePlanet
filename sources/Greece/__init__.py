@@ -1,4 +1,4 @@
-from utils.nomenclature import raw_nomenclature, RawMode
+# from utils.nomenclature import raw_nomenclature, RAW_MODE
 
 from sources import SourcePlugin
 from sources.Greece.gather import gather
@@ -23,5 +23,6 @@ class Plugin(SourcePlugin):
         }
 
     def get_store_table(self, message):
-        return raw_nomenclature(source=self.source_name, mode=RawMode.STATIC, data_type=message["collection_type"],
-                                frequency="", user=message['user'])
+        return f"raw_{self.source_name}_static_{message['collection_type']}__{message['user']}"
+        # return raw_nomenclature(source=self.source_name, mode=RAW_MODE.STATIC, data_type=message["collection_type"],
+        #                         frequency="", user=message['user'])

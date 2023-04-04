@@ -4,7 +4,7 @@ import re
 import utils
 from utils.cache import Cache
 
-from utils.nomenclature import RawMode
+# from utils.nomenclature import RAW_MODE
 
 
 def harmonize_command_line(arguments, config=None, settings=None):
@@ -14,8 +14,9 @@ def harmonize_command_line(arguments, config=None, settings=None):
     args = ap.parse_args(arguments)
 
     hbase_conn = config['hbase_store_raw_data']
-    hbase_table = utils.nomenclature.raw_nomenclature(args.source, RawMode.STATIC, data_type="BuildingInfo",
-                                                      user=args.user)
+    hbase_table = f"raw_{args.source}_static_BuildingInfo__{args.user}"
+    # hbase_table = utils.nomenclature.raw_nomenclature(args.source, RAW_MODE.STATIC, data_type="BuildingInfo",
+    #                                                   user=args.user)
     Cache.load_cache()
     for data in utils.hbase.get_hbase_data_batch(hbase_conn, hbase_table, batch_size=100):
         dic_list = []

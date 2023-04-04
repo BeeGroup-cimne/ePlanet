@@ -5,7 +5,7 @@ import pandas as pd
 from utils import nomenclature
 from utils.hbase import save_to_hbase
 from utils.kafka import save_to_kafka
-from utils.nomenclature import RawMode
+# from utils.nomenclature import RAW_MODE
 from utils.utils import log_string
 
 
@@ -47,8 +47,9 @@ def save_data(data, data_type, row_keys, column_map, config, settings, args):
     elif args.store == "hbase":
 
         try:
-            h_table_name = nomenclature.raw_nomenclature(config['source'], RawMode.STATIC, data_type=data_type,
-                                                         frequency="", user=args.user)
+            h_table_name = f"raw_{config['source']}_static_{data_type}__{args.user}"
+            # h_table_name = nomenclature.raw_nomenclature(config['source'], RAW_MODE.STATIC, data_type=data_type,
+            #                                              frequency="", user=args.user)
 
             save_to_hbase(data, h_table_name, config['hbase_store_raw_data'], column_map,
                           row_fields=row_keys)

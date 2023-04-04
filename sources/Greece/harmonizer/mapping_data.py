@@ -9,7 +9,7 @@ from utils.cache import Cache
 from utils.data_transformations import *
 from utils.hbase import save_to_hbase
 from utils.neo4j import create_sensor
-from utils.nomenclature import harmonized_nomenclature, HarmonizedMode
+from utils.nomenclature import harmonized_nomenclature
 from utils.rdf.rdf_functions import generate_rdf
 from utils.rdf.save_rdf import save_rdf_with_source, link_devices_with_source
 from slugify import slugify
@@ -35,28 +35,20 @@ def get_source_df(df, user, conn):
 
 
 def set_municipality(df):
-    municipality_dic = Cache.municipality_dic_GR
-    # crete filter
-    query_f = """SELECT ?s ?p ?o WHERE{ ?s ns1:parentADM1 <https://sws.geonames.org/6697802/> . ?s ?p ?o}"""
-    municipality_fuzz = partial(fuzzy_dictionary_match,
-                                map_dict=fuzz_params(
-                                    municipality_dic,
-                                    ['ns1:alternateName', 'ns1:shortName'],
-                                    query_f
-                                ),
-                                default=None,
-                                fix_score=75
-                                )
+    # municipality_dic = Cache.municipality_dic_GR
 
-    unique_municipality = df['Municipality'].unique()
-    municipality_map = {k: municipality_fuzz(k) for k in unique_municipality}
-    df.loc[:, 'hasAddressCity'] = df['Municipality'].map(municipality_map)
-
+    # read xlsx dict
+    df_municipalities = pd.read_excel("sources/Greece/harmonizer/municipalityMapping.xlsx", sheet_name="Crete")
+    df_municipalities.set_index("Nom en Grec", inplace=True)
+    df.loc[:, 'hasAddressCity'] = df.Municipality.map(df_municipalities['Geo_names'].to_dict())
+    df['hasAddressCity'] = df.hasAddressCity.apply(lambda x: rdflib.URIRef(x))
 
 def clean_static_data(df, config):
     df.rename(columns=translations, inplace=True)
+    df_municipalities = pd.read_excel("sources/Greece/harmonizer/municipalityMapping.xlsx", sheet_name="Crete")
+    df_municipalities.set_index("Nom en Grec", inplace=True)
     # Location Organization Subject
-    df['location_organization_subject'] = df['Municipality'].apply(slugify).apply(building_department_subject)
+    df['location_organization_subject'] = df['Municipality'].map(df_municipalities['Nom Europeu'].to_dict()).apply(slugify).apply(building_department_subject)
     # Building
     df['building_organization_subject'] = df['Unique ID'].apply(building_department_subject)
     df['building_subject'] = df['Unique ID'].apply(building_subject)
@@ -72,7 +64,6 @@ def clean_static_data(df, config):
 
     # Device
     df['device_subject'] = df['Unique ID'].apply(partial(device_subject, source=config['source']))
-
     return df
 
 
@@ -141,11 +132,12 @@ def harmonize_ts_data(raw_df, kwargs):
 
             reduced_df = monthly[['start', 'end', 'value', 'listKey', 'bucket', 'isReal']]
 
-            device_table = harmonized_nomenclature(mode=HarmonizedMode.ONLINE,
-                                                   data_type='EnergyConsumptionGridElectricity',
-                                                   R=True, C=False, O=False,
-                                                   aggregation_function='SUM',
-                                                   freq="P1M", user=user)
+            device_table = f"harmonized_online_EnergyConsumptionGridElectricity_100_SUM_P1M_{user}"
+            # device_table = harmonized_nomenclature(mode=HarmonizedMode.ONLINE,
+            #                                        data_type='EnergyConsumptionGridElectricity',
+            #                                        R=True, C=False, O=False,
+            #                                        aggregation_function='SUM',
+            #                                        freq="P1M", user=user)
 
             save_to_hbase(reduced_df.to_dict(orient="records"), device_table, hbase_conn,
                           [("info", ['end', 'isReal']), ("v", ['value'])],
@@ -158,7 +150,7 @@ def building_filters(df):
     municipality = df.Municipality.unique()[0]
     if municipality == "ΡΕΘΥΜΝΗΣ":
         return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΡΕΘΥΜΝΗΣ"]
-    if municipality == "ΑΓΙΟΥ ΝΙΚΟΛΑΟΥ":
+    if municipality == "ΑΓΙΟΥ ΝΙΚΟΛΑΟΥ" or municipality == "ΑΓ.ΝΙΚΟΛΑΟΥ":
         return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΑΓ.ΝΙΚΟΛΑΟΥ"]
     if municipality == "ΧΑΝΙΩΝ":
         return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΧΑΝΙΩΝ"]
@@ -206,8 +198,10 @@ def clean_general_data(df: pd.DataFrame):
     if df.empty:
         return df
 
+    df['Current record'] = df['Current record'].apply(lambda x: 'nan' if x == 'X' else x)
     df['Current record'] = df['Current record'].astype(float)
     df['Previous record'] = df['Previous record'].astype(float)
+    if 'variable' in df.columns: df.rename(columns={'variable': 'Variable'}, inplace=True)
     df['Variable'] = df['Variable'].astype(float)
     df = df[(~pd.isna(df['Current record'])) & (df['Current record'] > 0)]
     df = df[(~pd.isna(df['Previous record']))]

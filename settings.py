@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path='.env')
 
-conf_file = os.getenv("CONFIG_FILE", 'config.json')
+conf_file = os.getenv("CONFIG_FILE")
 kafka_message_size = int(os.getenv('KAFKA_MESSAGE_SIZE', 10))
 secret_password = os.getenv("SECRET_PASSWORD", secrets.token_hex())
 namespace_mappings = {"bigg": "bigg", "wgs": "wgs"}

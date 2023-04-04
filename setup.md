@@ -58,7 +58,7 @@ python3 -m set_up.Dictionaries -a translate
 
 ```bash
 echo "main org"
-python3 -m set_up.Organizations -f data/Organizations/czech-organizations.xls -name "Czech" -u "czech" -n "https://czech.cz#"
+python3 -m set_up.Organizations -f data/Organizations/czech-Organizations.xls -name "Czech" -u "czech" -n "https://czech.cz#"
 echo "summary source"
 python3 -m set_up.DataSources -u "czech" -n "https://czech.cz#" -f data/DataSources/czech.xls -d FileSource
 ```
@@ -103,7 +103,7 @@ python3 -m external_integration.Inergy -id_project=907 -n "https://czech.cz#" -u
 
 ```bash
 echo "main org"
-python3 -m set_up.Organizations -f data/Organizations/greece-organizations.xls -name "Greece" -u "greece" -n "https://greece.gr#"
+python3 -m set_up.Organizations -f data/Organizations/greece-Organizations.xls -name "Greece" -u "greece" -n "https://greece.gr#"
 echo "summary source"
 python3 -m set_up.DataSources -u "greece" -n "https://greece.gr#" -f data/DataSources/greece.xls -d FileSource
 ```

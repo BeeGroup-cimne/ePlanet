@@ -23,7 +23,6 @@ def fn_insert_elements(args, id_project, data):
             to_insert.append(el.__dict__)
 
     # logger.info(f"DATA: {to_insert}")
-    print(len(to_insert))
     try:
         res = InergySource.insert_elements(data=to_insert)
         logger.info(res)
@@ -49,9 +48,19 @@ def fn_insert_supplies(args, id_project, data):
         if supply:
             to_insert.append(supply.__dict__)
 
-    logger.info(f"DATA: {to_insert}")
-    res = InergySource.insert_supplies(data=to_insert)
+    # logger.info(f"DATA: {to_insert}")
+    try:
+        res = InergySource.insert_supplies(data=to_insert)
+        logger.info(res)
+    except Exception as ex:
+        logger.error(ex)
+        exit(-1)
+    failed_supplies = [x for x in res if x['is_error']]
+    # print([y['code'] for y in failed_supplies])
+    to_update = [y for y in to_insert if y['code'] in [y['code'] for y in failed_supplies]]
+    res = InergySource.update_supplies(data=to_update)
     logger.info(res)
+
     # if not DEBUG:
     #     if args.method == 'insert':
     #         InergySource.insert_supplies(data=to_insert)

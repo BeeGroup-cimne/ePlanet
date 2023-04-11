@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from utils.hbase import save_to_hbase
 from utils.kafka import save_to_kafka
-from utils.nomenclature import raw_nomenclature, RawMode
 from utils.utils import log_string
 
 
@@ -34,6 +33,9 @@ def gather(arguments, settings, config):
         for file in os.listdir(args.file):
             log_string(f"File: {file}")
 
+            if not file.endswith('xls') and not file.endswith('xlsx'):
+                print(f"file will not process {file}")
+                continue
             xl = pd.ExcelFile(f"{args.file}/{file}")
 
             for i in xl.sheet_names:
@@ -43,8 +45,8 @@ def gather(arguments, settings, config):
                     pass
                 elif 'info' in i:
                     pass
-                elif i in ["Spotřeba tepla"]:
-                    pass  # TODO "Spotřeba tepla"
+                elif i in ["Spotřeba tepla", "teplo"]:
+                    gather_ts_simple_district_heating(args, config, file, freq, i, settings)
                 elif re.match(r'[0-9]{4}', i):
                     pass
                 elif i in ['plyn', 'Spotřeba plynu']:  # GAS
@@ -68,9 +70,10 @@ def gather_ts_complex(args, config, file, freq, i, settings):
         save_data(data=df.to_dict(orient="records"), data_type="complex_ts",
                   row_keys=["Unique ID"],
                   column_map=[("info", "all")], config=config, settings=settings, args=args,
-                  table_name=raw_nomenclature(mode=RawMode.TIMESERIES, data_type="Consumptions",
-                                              frequency="freq",
-                                              user=args.user, source=config['source']))
+                  table_name=f"raw_{config['source']}_ts_Consumptions_{freq}_{args.user}")
+                  # table_name=raw_nomenclature(mode=RAW_MODE.TIMESERIES, data_type="Consumptions",
+                  #                             frequency="freq",
+                  #                             user=args.user, source=config['source']))
     except Exception as ex:
         log_string(ex)
 
@@ -105,14 +108,34 @@ def gather_ts_simple_electricity(args, config, file, freq, i, settings):
         save_data(data=df.to_dict(orient="records"), data_type="simple_ts",
                   row_keys=["Unique ID"],
                   column_map=[("info", "all")], config=config, settings=settings, args=args,
-                  table_name=raw_nomenclature(mode=RawMode.TIMESERIES,
-                                              data_type="EnergyConsumptionGridElectricity",
-                                              frequency=freq,
-                                              user=args.user, source=config['source']))
+                  table_name=f"raw_{config['source']}_ts_EnergyConsumptionGridElectricity_{freq}_{args.user}")
+                  # table_name=raw_nomenclature(mode=RAW_MODE.TIMESERIES,
+                  #                             data_type="EnergyConsumptionGridElectricity",
+                  #                             frequency=freq,
+                  #                             user=args.user, source=config['source']))
     except Exception as ex:
         log_string(ex)
 
+def gather_ts_simple_district_heating(args, config, file, freq, i, settings):
+    try:
+        unique_id = f"{file}".split('_')[0]
+        df = pd.read_excel(f"{args.file}/{file}", skiprows=5, sheet_name=i)
+        df.dropna(how='all', axis='columns', inplace=True)
+        df['Unique ID'] = unique_id
+        df['data_type'] = 'EnergyConsumptionDistrictHeating'
+        df = df.iloc[:12]
+        df['month'] = [i for i in range(1, 13)]
 
+        save_data(data=df.to_dict(orient="records"), data_type="simple_ts",
+                  row_keys=["Unique ID"],
+                  column_map=[("info", "all")], config=config, settings=settings, args=args,
+                  table_name=f"raw_{config['source']}_ts_EnergyConsumptionDistrictHeating_{freq}_{args.user}")
+
+        # table_name=raw_nomenclature(mode=RAW_MODE.TIMESERIES, data_type="EnergyConsumptionGas",
+        #                                       frequency=freq,
+        #                                       user=args.user, source=config['source']))
+    except Exception as ex:
+        log_string(ex)
 def gather_ts_simple_gas(args, config, file, freq, i, settings):
     try:
         unique_id = f"{file}".split('_')[0]
@@ -126,9 +149,11 @@ def gather_ts_simple_gas(args, config, file, freq, i, settings):
         save_data(data=df.to_dict(orient="records"), data_type="simple_ts",
                   row_keys=["Unique ID"],
                   column_map=[("info", "all")], config=config, settings=settings, args=args,
-                  table_name=raw_nomenclature(mode=RawMode.TIMESERIES, data_type="EnergyConsumptionGas",
-                                              frequency=freq,
-                                              user=args.user, source=config['source']))
+                  table_name=f"raw_{config['source']}_ts_EnergyConsumptionGas_{freq}_{args.user}")
+
+        # table_name=raw_nomenclature(mode=RAW_MODE.TIMESERIES, data_type="EnergyConsumptionGas",
+        #                                       frequency=freq,
+        #                                       user=args.user, source=config['source']))
     except Exception as ex:
         log_string(ex)
 
@@ -142,8 +167,9 @@ def gather_building_eem(args, config, settings):
             save_data(data=df.to_dict(orient="records"), data_type="EnergyEfficiencyMeasure",
                       row_keys=["Unique ID"],
                       column_map=[("info", "all")], config=config, settings=settings, args=args,
-                      table_name=raw_nomenclature(mode=RawMode.STATIC, data_type="EnergyEfficiencyMeasure",
-                                                  user=args.user, source=config['source']))
+                      table_name=f"raw_{config['source']}_static_EnergyEfficiencyMeasure__{args.user}")
+                      # table_name=raw_nomenclature(mode=RAW_MODE.STATIC, data_type="EnergyEfficiencyMeasure",
+                      #                             user=args.user, source=config['source']))
         except Exception as ex:
             log_string(ex)
 
@@ -156,8 +182,10 @@ def gather_building_info(args, config, settings):
             save_data(data=df.to_dict(orient="records"), data_type="BuildingInfo",
                       row_keys=["Unique ID"],
                       column_map=[("info", "all")], config=config, settings=settings, args=args,
-                      table_name=raw_nomenclature(mode=RawMode.STATIC, data_type="BuildingInfo",
-                                                  user=args.user, source=config['source']))
+                      table_name=f"raw_{config['source']}_static_BuildingInfo__{args.user}")
+
+            # table_name=raw_nomenclature(mode=RAW_MODE.STATIC, data_type="BuildingInfo",
+            #                                       user=args.user, source=config['source']))
         except Exception as ex:
             log_string(ex)
 

@@ -59,7 +59,7 @@ class Mapper(object):
                         "operations": []
                     },
                     "organizationName": {
-                        "key": "Municipality",
+                        "key": "organization",
                         "operations": []
                     }
                 }
@@ -269,7 +269,7 @@ class Mapper(object):
                         "operations": []
                     },
                     "energyPerformanceCertificateClass": {
-                        "key": "EnergyCertificateQualification",
+                        "key": "Klasifikační třída budovy dle PENB",
                         "operations": []
                     }
                 }

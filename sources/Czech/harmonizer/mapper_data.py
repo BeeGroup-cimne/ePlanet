@@ -11,7 +11,7 @@ from utils.cache import Cache
 from utils.data_transformations import *
 from utils.hbase import save_to_hbase
 from utils.neo4j import create_sensor
-from utils.nomenclature import harmonized_nomenclature, HarmonizedMode
+
 from utils.rdf.rdf_functions import generate_rdf
 from utils.rdf.save_rdf import save_rdf_with_source, link_devices_with_source
 from utils.utils import read_config
@@ -27,6 +27,8 @@ consumptionType = {
     "teplo": "EnergyConsumptionDistrictHeating",
     "voda": "EnergyConsumptionWaterHeating"
 }
+
+region_condition = ['Hasičský záchranný sbor Zlínského kraje', 'Zlínský kraj']
 
 def set_municipality(df):
     municipality_dic = Cache.municipality_dic_CZ
@@ -66,6 +68,11 @@ def get_source_df(df, user, conn):
     return df[['device_subject', 'source_id']]
 
 
+def set_organization(df):
+    df["organization"] = df["Municipality"]
+    df.loc[df.Owner.isin(region_condition), 'organization'] = 'Zlin region'
+    return df
+
 def harmonize_building_info(data, **kwargs):
     namespace = kwargs['namespace']
     user = kwargs['user']
@@ -91,8 +98,8 @@ def harmonize_building_info(data, **kwargs):
 
     df = df.applymap(decode_hbase)
     # Location Organization Subject
-
-    df['location_organization_subject'] = df['Municipality'].apply(slugify).apply(building_department_subject)
+    df = set_organization(df)
+    df['location_organization_subject'] = df['organization'].apply(slugify).apply(building_department_subject)
     # Building
     df['building_organization_subject'] = df['Unique ID'].apply(building_department_subject)
     df['building_subject'] = df['Unique ID'].apply(building_subject)
@@ -125,9 +132,9 @@ def harmonize_building_info(data, **kwargs):
         lambda x: f"ADDITIONAL-EPC-{x['Unique ID']}-{x['EnergyCertificateDate_timestamp']}",
         axis=1)
     translate_dict = {'Ano': True, 'Ne': False}
-    #  df['Renewable'] = df['Renewable'].map(translate_dict)
+    # df['Renewable'] = df['Renewable'].map(translate_dict)
     # df['EnergyAudit'] = df['EnergyAudit'].map(translate_dict)
-    #  df['Monitoring'] = df['Monitoring'].map(translate_dict)
+    # df['Monitoring'] = df['Monitoring'].map(translate_dict)
     df['SolarPV'] = df['SolarPV'].map(translate_dict)
     df['SolarThermal'] = df['SolarThermal'].map(translate_dict)
 
@@ -234,8 +241,8 @@ def harmonize_ts(df, data_type, n, freq, config, user):
                       measurement_uri, True,
                       False, False, freq, "SUM", dt_ini, dt_end, settings.namespace_mappings)
         df['listKey'] = measurement_id
-        device_table = harmonized_nomenclature(mode=HarmonizedMode.ONLINE, data_type=data_type, R=True,
-                                               C=False, O=False, aggregation_function="SUM", freq=freq, user=user)
+        device_table = f"harmonized_online_{data_type}_100_SUM_{freq}_{user}"
+
         save_to_hbase(df.to_dict(orient="records"),
                       device_table,
                       hbase_conn,

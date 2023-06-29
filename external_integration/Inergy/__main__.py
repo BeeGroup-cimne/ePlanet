@@ -9,8 +9,9 @@ import settings
 from external_integration.Inergy.sources.InergySource import InergySource
 from external_integration.constants import DEBUG
 from external_integration.logger import logger
-from external_integration.utils import gather_data, fn_insert_elements, fn_insert_supplies, fn_insert_hourly_data
-from external_integration.utils.neo4j import get_buildings, get_sensors, get_sensors_measurements
+from external_integration.utils import gather_data, fn_insert_elements, fn_insert_supplies, fn_insert_hourly_data, \
+    fn_insert_actions
+from external_integration.utils.neo4j import get_buildings, get_sensors, get_sensors_measurements, get_actions
 
 if __name__ == '__main__':
     # https://apiv20.inergy.online/docs/api.html#218--insertar-elementos
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser(description='Insert data to Inergy')
     ap.add_argument("--id_project", "-id_project", type=str, help="Project Id", required=True)
     ap.add_argument("--data", "-d", type=str, help="The data that you want to process",
-                    choices=['elements', 'supplies', 'consumption', 'all'],
+                    choices=['elements', 'supplies', 'consumption', 'actions', 'all'],
                     required=True)
 
     # ap.add_argument("--method", "-m", type=str, help="Method that you use to process the data.",
@@ -43,8 +44,13 @@ if __name__ == '__main__':
 
     # Get credentials
     if not DEBUG:
-        InergySource.authenticate(**config['inergy'])
+        InergySource.authenticate(**config['inergy_dev'])
         logger.info(InergySource.base_uri)
+
+    # # Get credentials
+    # if not DEBUG:
+    #     InergySource.authenticate(**config['inergy'])
+    #     logger.info(InergySource.base_uri)
 
     # Neo4J
     try:
@@ -57,33 +63,45 @@ if __name__ == '__main__':
     projects = args.id_project.split(',')
     logger.info(f"Projects to be integrate: {projects}")
 
+    # insert actions
+    if args.data == "actions" or args.data == "all":
+        for i in projects:
+            with driver.session() as session:
+                 actions = get_actions(session, namespace=args.namespace, id_project=i,
+                                          mandatory_year=args.mandatory_year).data()
+                # print(actions)
+            if actions:
+               fn_insert_actions(args, i, actions)
+               logger.info(f"The from {i} has been integrated.")
+
     # insert buildings
     if args.data == "elements" or args.data == "all":
         for i in projects:
             with driver.session() as session:
                 buildings = get_buildings(session, namespace=args.namespace, id_project=i,
                                           mandatory_year=args.mandatory_year).data()
-                print(buildings)
+                # print(buildings)
             if buildings:
-               fn_insert_elements(args, i, buildings)
-               logger.info(f"The from {i} has been integrated.")
+               print(buildings)
+               # fn_insert_elements(args, i, buildings, user=args.user)
+               # logger.info(f"The from {i} has been integrated.")
 
-    # insert devices
-    if args.data == "supplies" or args.data == "all":
-        for i in projects:
-            with driver.session() as session:
-                supplies = get_sensors(session, namespace=args.namespace, id_project=i,
-                                       mandatory_year=args.mandatory_year).data()
-            if supplies:
-                fn_insert_supplies(args, i, supplies)
-            logger.info(f"The from {i} has been integrated.")
-
-    if args.data == "consumption" or args.data == "all":
-        # insert ts year
-        for i in projects:
-            with driver.session() as session:
-                sensors = get_sensors_measurements(session=session, id_project=i, namespace=args.namespace,
-                                                   mandatory_year=args.mandatory_year).data()
-            if sensors:
-                fn_insert_hourly_data(args, i, sensors, config, args.user)
-                logger.info(f"The has been integrated.")
+    # # insert devices
+    # if args.data == "supplies" or args.data == "all":
+    #     for i in projects:
+    #         with driver.session() as session:
+    #             supplies = get_sensors(session, namespace=args.namespace, id_project=i,
+    #                                    mandatory_year=args.mandatory_year).data()
+    #         if supplies:
+    #             fn_insert_supplies(args, i, supplies)
+    #         logger.info(f"The from {i} has been integrated.")
+    #
+    # if args.data == "consumption" or args.data == "all":
+    #     # insert ts year
+    #     for i in projects:
+    #         with driver.session() as session:
+    #             sensors = get_sensors_measurements(session=session, id_project=i, namespace=args.namespace,
+    #                                                mandatory_year=args.mandatory_year).data()
+    #         if sensors:
+    #             fn_insert_hourly_data(args, i, sensors, config, args.user)
+    #             logger.info(f"The has been integrated.")

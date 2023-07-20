@@ -1,6 +1,6 @@
 from ontology.bigg_classes import Building, LocationInfo, BuildingSpace, Area, \
     EnergyPerformanceCertificate, AreaType, AreaUnitOfMeasurement, BuildingOwnership, Device, \
-    Element, EnergyEfficiencyMeasure, EnergySaving, Project, EnergyPerformanceCertificateAdditionalInfo, Organization
+    Element, EnergyEfficiencyMeasure, EnergySaving, Project, EnergyPerformanceCertificateAdditionalInfo, Organization, RetrofitProject
 from ontology.namespaces_definition import units, countries, bigg_enums, Bigg
 
 
@@ -22,6 +22,7 @@ class Mapper(object):
         EnergyPerformanceCertificateAdditionalInfo.set_namespace(namespace)
         EnergySaving.set_namespace(namespace)
         Organization.set_namespace(namespace)
+        RetrofitProject.set_namespace(namespace)
 
     def get_mappings(self, group):
         main_organization = {
@@ -139,7 +140,79 @@ class Mapper(object):
                 "energy_performance_certificate": {
                     "type": Bigg.hasEPC,
                     "link": "building_subject"
+                }
+            }
+        }
+
+        building_link = {
+            "name": "building_link",
+            "class": Building,
+            "type": {
+                "origin": "row"
+            },
+            "params": {
+                "mapping": {
+                    "subject": {
+                        "key": "building_subject",
+                        "operations": []
+                    }
+                }
+            },
+            "links": {
+                "project": {
+                    "type": Bigg.hasProject,
+                    "link": "building_subject"
+                }
+            }
+        }
+
+        project = {
+            "name": "project",
+            "class": RetrofitProject,
+            "type": {
+                "origin": "row"
+            },
+            "params": {
+                "raw": {
+                    "hasProjectInvestmentCurrency": units["CzechKoruna"]
                 },
+                "mapping": {
+                    "subject": {
+                        "key": "project_subject",
+                        "operations": []
+                    },
+                    # "projectIDFromOrganization": {
+                    #     "key": "project_id",
+                    #     "operations": []
+                    # },
+                    "projectStartDate": {
+                        "key": "epc_date",
+                        "operations": []
+                    },
+                    "projectOperationalDate": {
+                        "key": "eem_date",
+                        "operations": []
+                    },
+                    "projectInvestment": {
+                        "key": "Investment",
+                        "operations": []
+                    },
+                    "projectCurrencyExchangeRate": {
+                        "key": "Currency Rate",
+                        "operations": []
+                    },
+                    "projectSimplePaybackTime": {
+                        "key": "EEM Life",
+                        "operations": []
+                    },
+
+                }
+            },
+            "links": {
+                "energy_efficiency_measure": {
+                    "type": Bigg.includesMeasure,
+                    "link": "project_subject"
+                }
             }
         }
 
@@ -361,26 +434,16 @@ class Mapper(object):
         }
 
         eem = {
-            "name": "eem",
+            "name": "energy_efficiency_measure",
             "class": EnergyEfficiencyMeasure,
             "type": {
                 "origin": "row"
             },
             "params": {
-                "raw": {
-                    "hasEnergyEfficiencyMeasureInvestmentCurrency": units["CzechKoruna"],
-                },
+
                 "mapping": {
                     "subject": {
                         "key": "energy_efficiency_measure_subject",
-                        "operations": []
-                    },
-                    "energyEfficiencyMeasureCurrencyExchangeRate": {
-                        "key": "Currency Rate",
-                        "operations": []
-                    },
-                    "energyEfficiencyMeasureInvestment": {
-                        "key": "Investment",
                         "operations": []
                     },
                     "hasEnergyEfficiencyMeasureType": {
@@ -389,10 +452,6 @@ class Mapper(object):
                     },
                     "label": {
                         "key": "ETM Name",
-                        "operations": []
-                    },
-                    "energyEfficiencyMeasureCO2Reduction": {
-                        "key": "Annual CO2 reduction",
                         "operations": []
                     }
                 },
@@ -405,35 +464,10 @@ class Mapper(object):
             }
         }
 
-        energy_saving = {
-            "name": "energy_saving",
-            "class": EnergySaving,
-            "type": {
-                "origin": "row"
-            },
-            "params": {
-                "mapping": {
-                    "subject": {
-                        "key": "energy_saving_subject",
-                        "operations": []
-                    }, "energySavingStartDate": {
-                        "key": "energySavingStartDate",
-                        "operations": []
-                    }, "energySavingValue": {
-                        "key": "Annual Energy Savings",
-                        "operations": []
-                    }, "hasEnergySavingType": {
-                        "key": "hasEnergySavingType",
-                        "operations": []
-                    }
-                },
-            }
-        }
-
         grouped_modules = {
             "building_info": [main_organization, location_organization, building_organization, buildings,
                               building_space, location_info, gross_floor_area, energy_performance_certificate, epc_add,
-                              device, element],
-            "emm": [eem_element, eem, energy_saving]
+                              device, element, project],
+            "eem_project": [project, eem, eem_element, building_link]
         }
         return grouped_modules[group]

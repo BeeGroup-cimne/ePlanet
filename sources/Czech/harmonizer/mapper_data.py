@@ -23,8 +23,14 @@ from slugify import slugify
 
 consumptionType = {
     "plyn": "EnergyConsumptionGas",
+    "Plyn": "EnergyConsumptionGas",
     "elektřina celkem": "EnergyConsumptionGridElectricity",
+    "elektřina celkem (kWh)": "EnergyConsumptionGridElectricity",
+    "Elektřina celkem": "EnergyConsumptionGridElectricity",
+    "Teplo": "EnergyConsumptionDistrictHeating",
     "teplo": "EnergyConsumptionDistrictHeating",
+    "Voda": "EnergyConsumptionWaterHeating",
+    "voda (m3)": "EnergyConsumptionWaterHeating",
     "voda": "EnergyConsumptionWaterHeating"
 }
 
@@ -160,15 +166,23 @@ def harmonize_building_emm(data, **kwargs):
 
     config = kwargs['config']
 
-    df = pd.DataFrame().from_records(data)
+    config = {'neo4j': {'uri': 'neo4j://master1.internal:7687', 'auth': ('neo4j', 'neo4j1')}, 'hbase_store_raw_data': {'host': 'master2.internal', 'port': 9090, 'table_prefix': 'eplanet_raw_data', 'table_prefix_separator': ':'}, 'hbase_store_harmonized_data': {'host': 'master2.internal', 'port': 9090, 'table_prefix': 'eplanet_harmonized_data', 'table_prefix_separator': ':'}, 'kafka': {'connection': {'hosts': ['kafka1.internal'], 'ports': [29092]}, 'topic': 'eplanet', 'group_harmonize': 'group_harmonize', 'group_store': 'group_store'}, 'inergy': {'username': 'beegroup@cimne.upc.edu', 'password': '5lq1r4ZpVrK_V47h23Z16', 'base_uri': 'https://apiv20.inergy.online'}, 'inergy_dev': {'username': 'beegrouptest@cimne.upc.edu', 'password': '5H7YxUKMUB7d_Sn8nPFQZ', 'base_uri': 'https://api-dev.inergy.online'}, 'inergy_dev_auth': {'username': 'glaguna@cimne.upc.edu', 'password': 'sdfgh$$TT', 'base_uri': 'https://auth-dev.inergy.online'}, 'inergy_planning-dev': {'base_uri': ' https://api-planning-dev.inergy.online'}, 'source': 'Czech'}
+
+    namespace = "https://czech.cz#"
+    n = Namespace(namespace)
+    user = "czech"
+
+    # df = pd.DataFrame().from_records(data)
     translations = {"Název projektu / opatření": 'ETM Name', 'Realizovaná opatření': 'Measure Implemented',
                     "Datum": 'Date', 'Životnost opatření': 'EEM Life', 'Investice (Kč)': 'Investment',
                     'Dotace (Kč)': 'Subsidy', 'Směnný kurz (Kč/EUR)': 'Currency Rate',
                     'Roční energetické úspory (GJ)': 'Annual Energy Savings',
                     'Roční úspora CO2 (tuny)': 'Annual CO2 reduction', 'Komentáře': 'Comments'}
 
-    df = df.rename(translations, axis=1)
+    df = pd.read_excel(f"data/Czech/building/Building_identification_data_EAZK_v5_CZE.xlsm", skiprows=1, sheet_name=1)
+    df.rename(columns={"Unikátní kód": 'Unique ID'}, inplace=True)
 
+    df = df.rename(translations, axis=1)
     df = df.applymap(decode_hbase)
 
     # explode and convert measure
@@ -193,12 +207,21 @@ def harmonize_building_emm(data, **kwargs):
     # EnergySaving
     df['energy_saving_subject'] = df['Unique ID'].apply(energy_saving_subject)
 
-    df['energySavingStartDate'] = df['Date'].apply(lambda x: datetime.date(year=int(x.split('-')[0]), month=1, day=1))
+    df['epc_date'] = df['Date'].apply(lambda x: datetime.datetime(year=int(x.split('-')[0]), month=1, day=1, hour=0).strftime("%Y-%m-%dT%H:%M:%SZ"))
+    df['eem_date'] = df['Date'].apply(lambda x: datetime.datetime(year=int(x.split('-')[1]) if '-' in x else int(x), month=12, day=31, hour=23).strftime("%Y-%m-%dT%H:%M:%SZ"))
 
     df['hasEnergySavingType'] = to_object_property('TotalEnergySaving', namespace=bigg_enums)
 
+    # Project
+    df['project_subject'] = df.apply(
+        lambda x: f"PROJECT-{x['Unique ID']}", axis=1)
+    # Buildings
+    df['building_subject'] = df.apply(
+        lambda x: f"BUILDING-{x['Unique ID']}", axis=1)
+
+
     mapper = Mapper(config['source'], n)
-    g = generate_rdf(mapper.get_mappings("emm"), df)
+    g = generate_rdf(mapper.get_mappings("eem_project"), df)
     save_rdf_with_source(g, config['source'], config['neo4j'])
 
 
@@ -207,6 +230,7 @@ def harmonize_ts(df, data_type, n, freq, config, user):
     neo4j_connection = config['neo4j']
     neo = GraphDatabase.driver(**neo4j_connection)
 
+    df['Year'] = df['Year'].astype(int)
     df['date'] = df.apply(lambda x: f"{x.Year}/{int(x.Month)}/1", axis=1)
     df['date'] = pd.to_datetime(df['date'])
     df['start'] = df['date'].astype(int) // 10 ** 9
@@ -248,7 +272,7 @@ def harmonize_ts(df, data_type, n, freq, config, user):
                       hbase_conn,
                       [("info", ['end', 'isReal']), ("v", ['value'])],
                       row_fields=['bucket', 'listKey', 'start'])
-
+        # print(df)
 
 def harmonize_simple_ts(data, **kwargs):
     # Variables
@@ -292,12 +316,14 @@ def harmonize_complex_ts(data, **kwargs):
     df.columns = ['DataType', 'Year', 1, 2, 3, 4, 5, 6, 7, 8,
                   9, 10, 11, 12, 'Unit', 'Unique ID']
     df['device_subject'] = df['Unique ID'].apply(partial(device_subject, source=config['source']))
+
     df = df.melt(id_vars=["DataType", "Year", "Unit", "Unique ID", 'device_subject'], value_vars=range(1, 13),
                  value_name="value", var_name="Month")
 
     df['DataType'] = df['DataType'].map(consumptionType)
     df = df[df['DataType'].notna()]
     df = df.dropna(subset=['value'])
+    print(df.dtypes)
     df = df[df['value'] != 0]
     if df.empty:
         return

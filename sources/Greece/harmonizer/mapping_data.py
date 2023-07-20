@@ -180,10 +180,29 @@ def building_filters(df):
     if municipality == "ΒΙΑΝΝΟΥ":
         return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΒΙΑΝΝΟΥ"]
 
+    if municipality == "ΚΑΝΤΑΝΟΥ-ΣΕΛΙΝΟΥ":
+        return df[(df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΚΑΝΤΑΝΟΥ") | (
+                    df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΚΑΝΤΑΝΟΥ ΣΕΛΙΝ ΟΥ") | (
+                       df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΚΑΝΤΑΝΟΥ-ΣΕΛΙΝ ΟΥ")]
+        # return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΚΑΝΔΑΝΟΥ" | df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΚΑΝΤΑΝΟΥ ΣΕΛΙΝ ΟΥ" | df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΚΑΝΤΑΝΟΥ-ΣΕΛΙΝ ΟΥ"]
+    if municipality == "ΦΑΙΣΤΟΥ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΜΟΙΡΩΝ"]
+    if municipality == "ΙΕΡΑΠΕΤΡΑΣ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΙΕΡΑΠΕΤΡΑΣ"]
+    if municipality == "ΜΑΛΕΒΙΖΙΟΥ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΜΑΛΕΒΥΖΙΟΥ"]
+    if municipality == "ΜΥΛΟΠΟΤΑΜΟΥ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΜΥΛΟΠΟΤΑΜΟΥ"]
+    if municipality == "ΠΛΑΤΑΝΙΑ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΠΛΑΤΑΝΙΑ"]
+    if municipality == "ΣΗΤΕΙΑΣ":
+        return df[df['Name of the building or public lighting'] == "ΔΗΜΟΣ ΣΗΤΕΙΑΣ"]
 
 def clean_general_data(df: pd.DataFrame):
     # Only buildings
+
     df = building_filters(df)
+
     if df.empty:
         return df
     df['StartDate'] = df['Previous recording date'].astype(str).str.zfill(8)
@@ -231,14 +250,15 @@ def harmonize_data(data, **kwargs):
     df_static = clean_static_data(df_static, config)
     harmonize_static_data(df_static, config, kwargs, n)
 
-    harmonize_ts_data(df_static, kwargs)
+    # festos harmonize_ts_data(df_static, kwargs)
 
 
 def harmonize_static_data(df, config, kwargs, n):
     user = kwargs['user']
     mapper = Mapper(config['source'], n)
-
+    print(df)
     g = generate_rdf(mapper.get_mappings("static"), df)
+    print("g", g)
     save_rdf_with_source(g, config['source'], config['neo4j'])
     link_devices_with_source(get_source_df(df, user, config['neo4j']), n, config['neo4j'])
 

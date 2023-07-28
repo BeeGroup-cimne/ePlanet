@@ -89,7 +89,7 @@ python3 -m gather -so Czech -f "data/czech/ts" -u "czech" -n "https://czech.cz#"
 ### 5.3. Upload to inergy
 
 ```bash
-python3 -m external_integration.Inergy -id_project=907 -n "https://czech.cz#" -u czech -my 2021 -y 2021
+python3 -m external_integration.Inergy -id_project=856 -d "actions" -n "https://czech.cz#" -u czech -my 2021 -y 2021
 ```
 </details>
 

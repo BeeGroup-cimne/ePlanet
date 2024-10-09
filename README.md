@@ -20,11 +20,10 @@ www.eplaneth2020.eu
 The ePLANET backend modules of data gathering, harmonization, and data model extracted from common ontology are presented in this repository.
 As each pilot site has its own format and different data sources, there is a gathering and harmonization process for each one of the pilot sites.
 
+<div style="display: flex; align-items: center;">
+    <img src="https://www.eplaneth2020.eu/wp-content/uploads/2021/12/ue.png" style="width: 200px; margin-right: 20px;">
+    <p>The ePLANET H2020 project has received funding from the European Union‘s Horizon 2020 research and innovation programme under grant agreement N° 101032450. The views expressed in this publication are the sole responsibility of the author/s and do not necessarily reflect the views of the European Commission.</p>
+</div>
 
-
-
-![App Platorm](https://www.eplaneth2020.eu/wp-content/uploads/2021/12/ue.png)
-
-The ePLANET H2020 project has received funding from the European Union‘s Horizon 2020 research and innovation programme under grant agreement N° 101032450. The views expressed in this publication are the sole responsibility of the author/s and do not necessarily reflect the views of the European Commission.
 
 

@@ -66,7 +66,7 @@ def fn_insert_hourly_data(args, id_project, data, config, user):
             # print(req_hour_data.hourly_data)
             if req_hour_data.hourly_data:
                 aggregated_consumtion += aggregate_supply_consumptions(req_hour_data.hourly_data)
-    logger.info(f"Municipality {id_project} : {aggregated_consumtion}")
+    logger.info(f"Municipality {id_project} {args.year}: {aggregated_consumtion}")
 
 
 if __name__ == '__main__':

@@ -5,6 +5,7 @@ import happybase
 import pandas as pd
 from datetime import datetime
 from external_integration.Inergy.domain.Element import Element
+from external_integration.Inergy.domain.Action import Action
 from external_integration.Inergy.domain.HourlyData import HourlyData
 from external_integration.Inergy.domain.RequestHourlyData import RequestHourlyData
 from external_integration.Inergy.domain.SensorEnum import SensorEnum
@@ -12,17 +13,60 @@ from external_integration.Inergy.domain.Supply import Supply, get_sensor_id
 from external_integration.Inergy.sources.InergySource import InergySource
 from external_integration.constants import DEBUG, INVERTED_SENSOR_TYPE_TAXONOMY, TZ_INFO
 from external_integration.logger import logger
+from external_integration.constants import PROJECTS
+import requests
 
+def get_responsible(id_project, headers, base_uri):
 
-def fn_insert_elements(args, id_project, data):
+    res = requests.get(url=f"{base_uri}/responsibles/{id_project}", headers=headers, timeout=30)
+    if res.ok:
+        project_responsibles = dict(zip([d['name'] for d in res.json()], [d['idResponsible'] for d in res.json()]))
+        if project_responsibles.keys() and PROJECTS[id_project].split('ORGANIZATION-')[1].capitalize() + ' responsible' in project_responsibles.keys():
+            return project_responsibles[PROJECTS[id_project].split('ORGANIZATION-')[1].capitalize() + ' responsible']
+        else:
+            data = {
+                "idProject": id_project,
+                "name": PROJECTS[id_project].split('ORGANIZATION-')[1].capitalize() + ' responsible'
+            }
+            response = requests.post(url=f"{base_uri}/responsible", headers=headers, json=data, timeout=30)
+            if response.ok:
+                return response.json()
+            else:
+                res.raise_for_status()
+    else:
+        res.raise_for_status()
+
+def fn_insert_actions(args=None, id_project=None, data=None):
+    tok = ""
+    headers = {'Authorization': f'Bearer {tok}', 'accept': 'application/json', 'Content-Type': 'application/json'}
+    base_uri = 'https://sie-api-planning.inergy.online'
+
+    to_insert = []
+
+    project_responsible = get_responsible(id_project=id_project, headers=headers, base_uri=base_uri)
+
+    for action in data:
+        ac = Action.create(id_project=id_project, action=action, project_responsible=project_responsible)
+        if ac:
+            to_insert.append(ac.__dict__)
+    try:
+        res = InergySource.insert_actions(data=to_insert, headers=headers, base_uri=base_uri)
+        logger.info(res)
+    except Exception as ex:
+        logger.error(ex)
+        exit(-1)
+    failed_actions = [x for x in res if x['is_error']]
+    to_update = [y for y in to_insert if y['code'] in [y['code'] for y in failed_actions]]
+    res = InergySource.update_actions(data=to_update)
+    logger.info(res)
+
+def fn_insert_elements(args, id_project, data, user):
     to_insert = []
     for building in data:
-        el = Element.create(id_project, building)
-        print(el)
+        el = Element.create(id_project, building, user)
         if el:
             to_insert.append(el.__dict__)
-
-    # logger.info(f"DATA: {to_insert}")
+    logger.info(f"DATA: {to_insert}")
     try:
         res = InergySource.insert_elements(data=to_insert)
         logger.info(res)
@@ -30,16 +74,15 @@ def fn_insert_elements(args, id_project, data):
         logger.error(ex)
         exit(-1)
     failed_buildings = [x for x in res if x['is_error']]
-    # print([y['code'] for y in failed_buildings])
+    print([y['code'] for y in failed_buildings])
     to_update = [y for y in to_insert if y['code'] in [y['code'] for y in failed_buildings]]
     res = InergySource.update_elements(data=to_update)
     logger.info(res)
-    # if not DEBUG:
-    #     if args.method == 'insert':
-    #
-    #     elif args.method == 'update':
-    #         InergySource.update_elements(data=to_insert)
-
+    if not DEBUG:
+        if args.method == 'insert':
+            InergySource.insert_elements(data=to_update)
+        elif args.method == 'update':
+            InergySource.update_elements(data=to_insert)
 
 def fn_insert_supplies(args, id_project, data):
     to_insert = []
@@ -47,8 +90,7 @@ def fn_insert_supplies(args, id_project, data):
         supply = Supply.create(id_project, sensor)
         if supply:
             to_insert.append(supply.__dict__)
-
-    # logger.info(f"DATA: {to_insert}")
+    logger.info(f"DATA: {to_insert}")
     try:
         res = InergySource.insert_supplies(data=to_insert)
         logger.info(res)
@@ -56,19 +98,22 @@ def fn_insert_supplies(args, id_project, data):
         logger.error(ex)
         exit(-1)
     failed_supplies = [x for x in res if x['is_error']]
-    # print([y['code'] for y in failed_supplies])
+
     to_update = [y for y in to_insert if y['code'] in [y['code'] for y in failed_supplies]]
     res = InergySource.update_supplies(data=to_update)
     logger.info(res)
 
-    # if not DEBUG:
-    #     if args.method == 'insert':
-    #         InergySource.insert_supplies(data=to_insert)
-    #     elif args.method == 'update':
-    #         InergySource.update_supplies(data=to_insert)
+    if not DEBUG:
+        if args.method == 'insert':
+            InergySource.insert_supplies(data=to_insert)
+        elif args.method == 'update':
+            InergySource.update_supplies(data=to_insert)
 
 
 def fn_insert_hourly_data(args, id_project, data, config, user):
+    tok = ""
+    headers = {'Authorization': f'Bearer {tok}', 'accept': 'application/json', 'Content-Type': 'application/json'}
+    base_uri = 'https://apiv20.inergy.online'
     for i in data:
         _from, sensor_id, sensor_type = get_sensor_id(i['s'].get('uri'), i['m.uri'])
         if sensor_type and _from and sensor_id:
@@ -76,7 +121,6 @@ def fn_insert_hourly_data(args, id_project, data, config, user):
             measure_id = i['mes.uri'].split('#')[-1]
 
             logger.info(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
-            print(f"Sensor: {sensor_id} || Type: {sensor_type} || Measure: {measure_id}")
 
             table = {"type": i['m.uri'].split('#')[1],
                      "RCO": ('1' if i['s'].get('bigg__timeSeriesIsRegular') else '0') +
@@ -91,11 +135,11 @@ def fn_insert_hourly_data(args, id_project, data, config, user):
                                               hourly_data=[])
 
             req_hour_data.hourly_data = get_data_hbase(_from, measure_id, sensor_type, args.year, table, config)
-
             logger.info(f"DATA: {req_hour_data.__dict__}")
             if req_hour_data.hourly_data:
                 try:
-                    res = InergySource.update_hourly_data(data=[req_hour_data.__dict__])
+
+                    res = InergySource.update_hourly_data(data=[req_hour_data.__dict__], headers=headers, base_uri=base_uri)
                     logger.info(res)
                 except Exception as ex:
                     logger.error(ex)
@@ -154,7 +198,6 @@ def clean_ts_data(_from, data):
 
 
 def get_data_hbase(_from, measure_id, sensor_type, year, table_p, config):
-
     # calculate buckets with a list of [(ts_ini of bucket, ts_end of bucket, bucket, index),...]
     start_date = int(datetime(int(year), 1, 1).timestamp())
     end_date = int(datetime(int(year), 12, 31).timestamp())
@@ -184,7 +227,7 @@ def get_data_hbase(_from, measure_id, sensor_type, year, table_p, config):
             _, _, timestamp = key.decode().split('~')
             value = decode_hbase_values(value=value)
             ts_data.append({'start': timestamp, 'end': value['info:end'], 'value': value['v:value']})
-
+    print(ts_data)
     logger.info(f"We found {len(ts_data)} records from {measure_id}")
 
     return clean_ts_data(_from, ts_data) if ts_data else []

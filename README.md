@@ -25,5 +25,13 @@ As each pilot site has its own format and different data sources, there is a gat
     <p>The ePLANET H2020 project has received funding from the European Union‘s Horizon 2020 research and innovation programme under grant agreement N° 101032450. The views expressed in this publication are the sole responsibility of the author/s and do not necessarily reflect the views of the European Commission.</p>
 </div>
 
+## Authors
+- Jose Manuel Broto - jmbroto@cimne.upc.edu
+- Eloi Gabaldón - egabaldon@cimne.upc.edu
+- Gerard Laguna - glaguna@cimne.upc.edu
+  
+Copyright (c) 2024 Jose Manuel Broto, Eloi Gabaldón, Gerard Laguna
+  
+
 
 
